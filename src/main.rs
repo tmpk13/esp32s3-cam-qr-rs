@@ -1,3 +1,8 @@
+use esp_idf_sys;
+
+use esp_camera_rs;
+
+
 fn main() {
     // It is necessary to call this function once. Otherwise, some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -15,6 +20,10 @@ fn main() {
             .clone()
             .try_into()
             .expect("convert"),).expect("decode");
+
+    // let camera = esp_camera_rs::Camera::new(
+
+    // );
 
     esp_idf_svc::sys::link_patches();
 
