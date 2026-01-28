@@ -26,16 +26,9 @@ I found: `esp32-camera/driver/include/esp_camera.h`
 Need to connect `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
 ``` 
 pub struct camera_config_t {
-        #[doc = "< GPIO pin for camera power down line"]
-        pub pin_pwdn: ::core::ffi::c_int,
-        #[doc = "< GPIO pin for camera reset line"]
-        pub pin_reset: ::core::ffi::c_int,
-        #[doc = "< GPIO pin for camera XCLK line"]
-        pub pin_xclk: ::core::ffi::c_int,
+...
         pub __bindgen_anon_1: camera_config_t__bindgen_ty_1,
         pub __bindgen_anon_2: camera_config_t__bindgen_ty_2,
-        #[doc = "< GPIO pin for camera D7 line"]
-        pub pin_d7: ::core::ffi::c_int,
 ...
     }
 ...
@@ -54,8 +47,16 @@ pub struct camera_config_t {
     }
 ```
 
-Trying to add to `esp-camera-rs/src/lib.rs`
+Added to `esp-camera-rs/src/lib.rs`:
 ```
-    pin_sccb_sda: pin_sccb_sda.pin(),
-    pin_sccb_scl: pin_sccb_scl.pin(),
+let config = camera::camera_config_t {
+            pin_pwdn: pin_pwdn.pin(),
+            pin_reset: pin_reset.pin(),
+            pin_xclk: pin_xclk.pin(),
+
+            __bindgen_anon_1: camera::camera_config_t__bindgen_ty_1 { pin_sccb_sda: pin_sccb_sda.pin() },
+            __bindgen_anon_2: camera::camera_config_t__bindgen_ty_2 { pin_sccb_scl: pin_sccb_scl.pin() },
 ```
+
+
+
