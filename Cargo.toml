@@ -28,7 +28,6 @@ esp-idf-svc = "0.51"
 rxing = { version = "0.8.2", default-features = false }
 
 esp-camera-rs = { path = "./esp-camera-rs" }
-esp-idf-sys = "0.36.1"
 esp-idf-hal = "0.45.2"
 
 # --- Optional Embassy Integration ---

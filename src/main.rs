@@ -1,7 +1,4 @@
-use esp_idf_sys;
-
 use esp_camera_rs;
-
 
 fn main() {
     // It is necessary to call this function once. Otherwise, some patches to the runtime
@@ -13,14 +10,17 @@ fn main() {
 
     let matrix = qrcode_encoder::encode("HI", ErrorCorrectionLevel::L).expect("Encode failed");
 
-    let string = qrcode_decoder::decode_bitmatrix(&matrix
+    let string = qrcode_decoder::decode_bitmatrix(
+        &matrix
             .getMatrix()
             .as_ref()
             .unwrap()
             .clone()
             .try_into()
-            .expect("convert"),).expect("decode");
-    
+            .expect("convert"),
+    )
+    .expect("decode");
+
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
     /*
     Chip Pin	Description
@@ -39,7 +39,23 @@ fn main() {
     GPIO47	Camera horizontal sync pin
     GPIO48	Camera video data pin (Y9)
     */
-    let camera = esp_camera_rs::Camera::new(pin_pwdn, pin_reset, pin_xclk, pin_d0, pin_d1, pin_d2, pin_d3, pin_d4, pin_d5, pin_d6, pin_d7, pin_vsync, pin_href, pin_pclk);
+    let peripherals = esp_idf_hal::peripherals::Peripherals::take().unwrap();
+    let camera = esp_camera_rs::Camera::new(
+        peripherals.pins.gpio1,  // Unused
+        peripherals.pins.gpio2,  // Unused
+        peripherals.pins.gpio10, // "Camera related clock pin"
+        peripherals.pins.gpio15, // gpio15 pin_d0 Y2
+        peripherals.pins.gpio17, // gpio17 pin_d1 Y3
+        peripherals.pins.gpio18, // gpio18 pin_d2 Y4
+        peripherals.pins.gpio16, // gpio16 pin_d3 Y5
+        peripherals.pins.gpio14, // gpio14 pin_d4 Y6
+        peripherals.pins.gpio12, // gpio12 pin_d5 Y7
+        peripherals.pins.gpio11, // gpio11 pin_d6 Y8
+        peripherals.pins.gpio48, // gpio48 pin_d7 Y9
+        peripherals.pins.gpio38, // gpio38 pin_vsync Y3
+        peripherals.pins.gpio47, // gpio47 pin_href Y3
+        peripherals.pins.gpio13, // gpio13 pin_pclk Y3
+    );
 
     esp_idf_svc::sys::link_patches();
 
