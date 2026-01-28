@@ -35,3 +35,9 @@ Need to connect `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf
         pub pin_sscb_sda: ::core::ffi::c_int,
     }
 ```
+
+Trying to add
+```
+    pin_sccb_sda: pin_sccb_sda.pin(),
+    pin_sccb_scl: pin_sccb_scl.pin(),
+```
