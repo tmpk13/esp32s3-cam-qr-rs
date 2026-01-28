@@ -1,3 +1,5 @@
+# Xiao ESP32s3 Sense QR-Code scanning in rust using the ESP-IDF
+
 git submodule add https://github.com/jlocash/esp-camera-rs
 
 https://github.com/jlocash/esp-camera-rs
