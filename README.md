@@ -36,7 +36,7 @@ Need to connect `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf
     }
 ```
 
-Trying to add
+Trying to add to `esp-camera-rs/src/lib.rs`
 ```
     pin_sccb_sda: pin_sccb_sda.pin(),
     pin_sccb_scl: pin_sccb_scl.pin(),
