@@ -52,9 +52,11 @@ fn main() {
         peripherals.pins.gpio12, // gpio12 pin_d5 Y7
         peripherals.pins.gpio11, // gpio11 pin_d6 Y8
         peripherals.pins.gpio48, // gpio48 pin_d7 Y9
-        peripherals.pins.gpio38, // gpio38 pin_vsync Y3
-        peripherals.pins.gpio47, // gpio47 pin_href Y3
-        peripherals.pins.gpio13, // gpio13 pin_pclk Y3
+        peripherals.pins.gpio38, // gpio38 pin_vsync
+        peripherals.pins.gpio47, // gpio47 pin_href
+        peripherals.pins.gpio13, // gpio13 pin_pclk
+        peripherals.pins.gpio40, // gpio40 pin_sda
+        peripherals.pins.gpio39, // gpio39 pin_scl
     );
 
     esp_idf_svc::sys::link_patches();
