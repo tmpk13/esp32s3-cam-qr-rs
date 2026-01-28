@@ -25,14 +25,32 @@ I found: `esp32-camera/driver/include/esp_camera.h`
 
 Need to connect `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
 ``` 
-    pub __bindgen_anon_1: camera_config_t__bindgen_ty_1,
-    pub __bindgen_anon_2: camera_config_t__bindgen_ty_2,
+pub struct camera_config_t {
+        #[doc = "< GPIO pin for camera power down line"]
+        pub pin_pwdn: ::core::ffi::c_int,
+        #[doc = "< GPIO pin for camera reset line"]
+        pub pin_reset: ::core::ffi::c_int,
+        #[doc = "< GPIO pin for camera XCLK line"]
+        pub pin_xclk: ::core::ffi::c_int,
+        pub __bindgen_anon_1: camera_config_t__bindgen_ty_1,
+        pub __bindgen_anon_2: camera_config_t__bindgen_ty_2,
+        #[doc = "< GPIO pin for camera D7 line"]
+        pub pin_d7: ::core::ffi::c_int,
+...
+    }
 ...
     pub union camera_config_t__bindgen_ty_1 {
         #[doc = "< GPIO pin for camera SDA line"]
         pub pin_sccb_sda: ::core::ffi::c_int,
         #[doc = "< GPIO pin for camera SDA line (legacy name)"]
         pub pin_sscb_sda: ::core::ffi::c_int,
+    }
+...
+    pub union camera_config_t__bindgen_ty_2 {
+        #[doc = "< GPIO pin for camera SCL line"]
+        pub pin_sccb_scl: ::core::ffi::c_int,
+        #[doc = "< GPIO pin for camera SCL line (legacy name)"]
+        pub pin_sscb_scl: ::core::ffi::c_int,
     }
 ```
 
