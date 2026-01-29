@@ -212,6 +212,7 @@ Because this function may panic, its use is generally discouraged. Instead, pref
 
 <br>
 <br>
-<br>
 
-#### Some debuging was with the help of claude sonnet 4.5 - **no code or output was used directely or copied from LLM output**
+---
+
+### Claude Sonnet 4.5 was used for some debuging of errors <br> No code or output was used directely or copied from LLM output
