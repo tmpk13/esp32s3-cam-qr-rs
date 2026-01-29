@@ -125,3 +125,12 @@ What to put in set_xclk as arguments
     >,
 ...
 ```
+
+
+Was crashing but it was just the some not being handeled. Was using `expect` -> now using match.
+From the docs:
+```
+Returns the contained [Ok] value, consuming the self value.
+
+Because this function may panic, its use is generally discouraged. Instead, prefer to use pattern matching and handle the [Err] case explicitly, or call unwrap_or, unwrap_or_else, or unwrap_or_default.
+```
