@@ -254,4 +254,4 @@ Because this function may panic, its use is generally discouraged. Instead, pref
 
 ---
 
-### Claude Sonnet 4.5 was used for some debuging of errors <br> No code or output was used directely or copied from LLM output
+#### Claude Sonnet 4.5 was used for some debuging of errors <br> No code or output was used directely or copied from LLM output
