@@ -66,6 +66,11 @@ fn main() {
         .sensor()
         .set_framesize(esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240)
         .unwrap();
+    // Set clock to 10MHZ
+    camera
+        .sensor()
+        .set_xclk(0, 10_000_000)
+        .unwrap();
 
     fn detect(camera: &esp_camera_rs::Camera) {
         // Get frame buffer from camera
