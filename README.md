@@ -19,7 +19,11 @@ Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
 - [ ] Add range detection (lidar?) for qr to make sure the code is in frame
 
 <br>
+<br>
 
+# Implementation log
+<details>
+<summary><b>Click to expand</b></summary>
 
 ## Setup esp-camera
 [esp-idf remote components](https://docs.esp-rs.org/esp-idf-hal/esp_idf_sys/index.html#remote-components-idf-component-registry)
@@ -204,7 +208,10 @@ Returns the contained [Ok] value, consuming the self value.
 
 Because this function may panic, its use is generally discouraged. Instead, prefer to use pattern matching and handle the [Err] case explicitly, or call unwrap_or, unwrap_or_else, or unwrap_or_default.
 ```
+</details>
 
-
+<br>
+<br>
+<br>
 
 ### Some debuging was with the help of claude sonnet 4.5 - **no code or output was used directely or copied from LLM output**
