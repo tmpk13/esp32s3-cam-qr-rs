@@ -2,7 +2,7 @@
 
 QR code detection and decoding
 
-Using the rxing, esp-idf, and esp32-camera-rs crates 
+Using the rxing, esp-idf, and esp32-camera-rs crates
 On the Xiao esp32s3 sense w/ camera
 
 */
@@ -16,7 +16,6 @@ fn main() {
 
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
-
 
     // Get esp32s3 pins
     let peripherals = esp_idf_hal::peripherals::Peripherals::take().unwrap();
@@ -61,6 +60,8 @@ fn main() {
     .unwrap();
 
     // Set framesize to 240x240
+    const FRAME_WIDTH: u32 = 240;
+    const FRAME_HEIGHT: u32 = 240;
     camera
         .sensor()
         .set_framesize(esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240)
@@ -73,12 +74,12 @@ fn main() {
         // Attempt to detect/decode QR from framebuffer
         let qrcode = rxing::helpers::detect_in_luma(
             frame_buffer.data().to_vec(),
-            240,
-            240,
+            FRAME_WIDTH,
+            FRAME_HEIGHT,
             Some(rxing::BarcodeFormat::QR_CODE),
         );
 
-        // Handel "No qrcode found"
+        // Handel successful detection and no qrcode found cases
         match qrcode {
             Ok(c) => log::info!("QRcode: {}", c.getText()),
             Err(e) => log::info!("No qrcode found {}", e),
@@ -87,11 +88,13 @@ fn main() {
 
     // If loop feature is enabled attempt to detect every 10s
     if cfg!(feature = "loop") {
+        // Loop every 10s and detect
         loop {
             detect(&camera);
             esp_idf_hal::delay::Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), 10_000);
         }
     } else {
+        // Detect once and exit
         detect(&camera);
     }
 }
