@@ -97,14 +97,20 @@ Set image size and shape in `esp-camera-rs/src/lib.rs`:
 ``` rust
     let config = camera::camera_config_t {
 ...
-        xclk_freq_hz: 10000000,
+        xclk_freq_hz: 10_000_000,
 ...
         pixel_format: camera::pixformat_t_PIXFORMAT_GRAYSCALE,
         frame_size: camera::framesize_t_FRAMESIZE_240X240,
 ```
-
+Needed 10MHZ to fit the framebuffer
 
 What to put in set_xclk as arguments
+
+``` rust
+    pub fn set_xclk(&self, timer: i32, xclk: i32) -> Result<(), EspError> {
+        esp!(unsafe { (*self.sensor).set_xclk.unwrap()(self.sensor, timer, xclk) })
+    }
+```
 
 
 `target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
