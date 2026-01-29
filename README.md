@@ -64,28 +64,29 @@ let config = camera::camera_config_t {
 ```
 
 
-Error:
+**Error:**
 ``` sh
 E (879) cam_hal: cam_dma_config(301): frame buffer malloc failed
 E (889) cam_hal: cam_config(385): cam_dma_config failed
 E (899) camera: Camera config failed with error 0xffffffff
 ```
-Not enough memory?
+*Not enough memory?*
 
-Changed target in `esp-camera-rs/.cargo/config.toml`:
-`target = "xtensa-esp32s3-espidf"`
-Unsure if it actually effects the build
+~~Changed target in `esp-camera-rs/.cargo/config.toml`:  
+`target = "xtensa-esp32s3-espidf"`  
+Unsure if it actually effects the build~~  
+Still breaking doens't seems to have an effect
 
-Still breaking
 
 Maybe enabling spiram: [ESP32 config docs](https://github.com/jlocash/esp-camera-rs/blob/main/sdkconfig.defaults)
 
 [ESP32 kconfig docs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/kconfig-reference.html#component-config-esp-driver-camera-controller-configurations)
+[Related gh issue](https://github.com/esp-rs/esp-idf-sys/issues/177)
 
-#### Needed to swap to s3
+**Needed to swap to s3**
 `CONFIG_ESP32_SPIRAM_SUPPORT=y` -> `CONFIG_ESP32S3_SPIRAM_SUPPORT=y`
 
-https://github.com/esp-rs/esp-idf-sys/issues/177
+
 `sdkconfig.defaults`
 ``` toml
 CONFIG_ESP32S3_SPIRAM_SUPPORT=y
