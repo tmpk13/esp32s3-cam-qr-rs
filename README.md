@@ -21,7 +21,7 @@ Using [esp-camera-rs](https://github.com/jlocash/esp-camera-rs)
 <br>
 
 
-## Updating esp-idf in esp-camera-rs
+## Updated esp-idf in esp-camera-rs
 Updated the versions for idf crates in ./esp-camera-rs/Cargo.toml
 ``` toml
 [dependencies]
@@ -30,7 +30,7 @@ esp-idf-sys = "0.36.1"
 ```
 ## Setting up I2C
 
-Getting error:
+*Error:*
 ``` sh
 E (719) i2c: i2c_set_pin(986): scl and sda gpio numbers are the same
 E (729) camera: sccb init err
