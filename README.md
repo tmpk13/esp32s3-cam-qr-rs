@@ -1,4 +1,4 @@
-# QR-Code scanning in rust on the Xiao ESP32s3 Sense
+# QR-Code scanning in Rust on the Xiao *ESP32s3 Sense*
 <br>
 
 Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
