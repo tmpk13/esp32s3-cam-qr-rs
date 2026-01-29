@@ -2,12 +2,12 @@
 
 Initalized with template `cargo generate esp-rs/esp-idf-template cargo`
 
-Using rxing crate: https://github.com/rxing-core/rxing
+QR code crate **rxing** crate: https://github.com/rxing-core/rxing
 
 Using [esp-camera-rs](https://github.com/jlocash/esp-camera-rs)
 `git submodule add https://github.com/jlocash/esp-camera-rs`
 
-https://github.com/jlocash/esp-camera-rs
+<br><br><br>
 
 ## Updating esp-idf in esp-camera-rs
 Updated the versions for idf crates in ./esp-camera-rs/Cargo.toml
