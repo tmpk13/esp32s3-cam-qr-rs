@@ -9,7 +9,8 @@ Using [esp-camera-rs](https://github.com/jlocash/esp-camera-rs)
 `git submodule add https://github.com/jlocash/esp-camera-rs`
 
 ---
-<br><br>
+<br>
+**Todo**
 - [ ] Add lidar for qr range detection to make sure the code is in frame
 <br>
 
