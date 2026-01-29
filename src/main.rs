@@ -1,7 +1,8 @@
 use esp_camera_rs;
 use esp_idf_hal;
 use esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240;
-use rxing::{BarcodeFormat, multi::qrcode};
+use rxing::{BarcodeFormat};
+
 fn main() {
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
     /*
@@ -49,7 +50,7 @@ fn main() {
 
     let fb = camera.get_framebuffer().unwrap();
     
-    let code = rxing::helpers::detect_in_luma(fb.data().to_vec(), 240, 240, Some(BarcodeFormat::QR_CODE)).ex;
+    let code = rxing::helpers::detect_in_luma(fb.data().to_vec(), 240, 240, Some(BarcodeFormat::QR_CODE));
 
     
 
@@ -61,16 +62,7 @@ fn main() {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     match code {
-        Ok(c) => log::info!("{}", c),
+        Ok(c) => log::info!("QRcode: {}", c.getText()),
         Err(e) => log::info!("No qrcode found {}", e),
     }
-
-    let text = code.getText();
-
-    log::info!(
-        "Code: {:?} {} x {}",
-        text,
-        fb.width(),
-        fb.height(),
-    );
 }

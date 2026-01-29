@@ -6,13 +6,14 @@ git submodule add https://github.com/jlocash/esp-camera-rs
 
 https://github.com/jlocash/esp-camera-rs
 
-
+## Updating esp-idf in esp-camera-rs
 Updated the versions for idf crates in ./esp-camera-rs/Cargo.toml
 ``` toml
 [dependencies]
 esp-idf-hal = "0.45.2"
 esp-idf-sys = "0.36.1"
 ```
+## Setting up I2C
 
 Getting error:
 ``` sh
@@ -22,8 +23,7 @@ E (729) camera: Camera probe failed with error 0x102(ESP_ERR_INVALID_ARG)
 E (739) i2c: i2c_driver_delete(481): i2c driver install error
 ```
 
-Using ripgrep cli tool `rg "camera_config_t"`
-I found: `esp32-camera/driver/include/esp_camera.h`
+Found implementation for camera_config_t using ripgrep `rg "camera_config_t"`: `esp32-camera/driver/include/esp_camera.h`
 
 Need to connect `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
 ``` rust
@@ -93,25 +93,44 @@ https://github.com/esp-rs/esp-idf-sys/issues/177
     CONFIG_SPIRAM_ALLOCATOR_CONTIGUITY_8K=y
 ```
 
+## Frame buffer
+
+**Error:**
+``` sh
+E (1440) cam_hal: FB-SIZE: 40320 != 57600
+cam_hal: EV-VSYNC-OVF
+...
+cam_hal: EV-VSYNC-OVF
+W (5463) cam_hal: Failed to get the frame on time!
+```
+
+**Solution:**
 Set image size and shape in `esp-camera-rs/src/lib.rs`:
 ``` rust
     let config = camera::camera_config_t {
 ...
-        xclk_freq_hz: 10_000_000,
+        xclk_freq_hz: 10_000_000, // <-- for the frame buffer
 ...
         pixel_format: camera::pixformat_t_PIXFORMAT_GRAYSCALE,
         frame_size: camera::framesize_t_FRAMESIZE_240X240,
 ```
-Needed 10MHZ to fit the framebuffer
 
-What to put in set_xclk as arguments
+
+
+## Still need to fix
+The frames were set by going into the library
+But would be nice to set from outside
+
+Needed to reduce from `20MHZ` to `10MHZ` to fit the framebuffer. 
+*Too fast?*
+
+Need to determine what to put in set_xclk as arguments for `timer` `xclk`
 
 ``` rust
     pub fn set_xclk(&self, timer: i32, xclk: i32) -> Result<(), EspError> {
         esp!(unsafe { (*self.sensor).set_xclk.unwrap()(self.sensor, timer, xclk) })
     }
 ```
-
 
 `target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
 ``` rust
@@ -127,10 +146,31 @@ What to put in set_xclk as arguments
 ```
 
 
-Was crashing but it was just the some not being handeled. Was using `expect` -> now using match.
-From the docs:
+
+## Crashing while scanning
+
 ```
+I (1473) cam_hal: Allocating 57600 Byte frame buffer in PSRAM
+I (1473) cam_hal: cam config ok
+I (1483) ov2640: Set PLL: clk_2x: 1, clk_div: 3, pclk_auto: 1, pclk_div: 8
+I (1563) ov2640: Set PLL: clk_2x: 1, clk_div: 3, pclk_auto: 1, pclk_div: 8
+
+thread 'main' panicked at src/main.rs:80:107:
+decodes: NotFoundException("")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+abort() was called at PC 0x420b04c6 on core 0
+0x420b04c6 - std::sys::pal::unix::abort_internal
+```
+
+Was crashing but it was just the `Some` was not being handeled. Was using `expect` -> now using match.
+From the docs:
+``` docs
 Returns the contained [Ok] value, consuming the self value.
 
 Because this function may panic, its use is generally discouraged. Instead, prefer to use pattern matching and handle the [Err] case explicitly, or call unwrap_or, unwrap_or_else, or unwrap_or_default.
 ```
+
+
+
+### Some debuging was with the help of claude sonnet 4.5 - **no code or output was used directely or copied from LLM output**
