@@ -1,5 +1,6 @@
 use esp_camera_rs;
-
+use esp_idf_hal::{spi::config, sys::camera::framesize_t};
+use esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240;
 fn main() {
     // It is necessary to call this function once. Otherwise, some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -57,12 +58,23 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
-    );
+    ).unwrap();
+
+    camera.sensor().set_framesize(
+        framesize_t_FRAMESIZE_240X240
+    ).unwrap();
+    // camera.sensor().set_xclk(
+    //     10_000_000
+    // ).unwrap();
+
+    let fb = camera.get_framebuffer().unwrap();
+
+    
 
     esp_idf_svc::sys::link_patches();
 
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    log::info!("Code: {:?}", string.getText());
+    log::info!("Code: {:?} {} {}", string.getText(), fb.width(), fb.height());
 }

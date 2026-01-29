@@ -75,6 +75,47 @@ Unsure if it actually effects the build
 
 Still breaking
 
-Maybe enabling spiram: https://github.com/jlocash/esp-camera-rs/blob/main/sdkconfig.defaults
+Maybe enabling spiram: [ESP32 config docs](https://github.com/jlocash/esp-camera-rs/blob/main/sdkconfig.defaults)
 
-https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/kconfig-reference.html#component-config-esp-driver-camera-controller-configurations
+[ESP32 kconfig docs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/kconfig-reference.html#component-config-esp-driver-camera-controller-configurations)
+
+#### Needed to swap to s3
+`CONFIG_ESP32_SPIRAM_SUPPORT=y` -> `CONFIG_ESP32S3_SPIRAM_SUPPORT=y`
+
+https://github.com/esp-rs/esp-idf-sys/issues/177
+`sdkconfig.defaults`
+``` toml
+    CONFIG_ESP32S3_SPIRAM_SUPPORT=y
+    CONFIG_SPIRAM_MODE_OCT=y
+    CONFIG_SPIRAM_SPEED_80M=y
+    CONFIG_SPIRAM_BOOT_INIT=y
+    CONFIG_SPIRAM_USE_MALLOC=y
+    CONFIG_SPIRAM_ALLOCATOR_CONTIGUITY_8K=y
+```
+
+Set image size and shape in `esp-camera-rs/src/lib.rs`:
+``` rust
+    let config = camera::camera_config_t {
+...
+        xclk_freq_hz: 10000000,
+...
+        pixel_format: camera::pixformat_t_PIXFORMAT_GRAYSCALE,
+        frame_size: camera::framesize_t_FRAMESIZE_240X240,
+```
+
+
+What to put in set_xclk as arguments
+
+
+`target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
+``` rust
+...
+    pub set_xclk: ::core::option::Option<
+        unsafe extern "C" fn(
+            sensor: *mut sensor_t,
+            timer: ::core::ffi::c_int,
+            xclk: ::core::ffi::c_int,
+        ) -> ::core::ffi::c_int,
+    >,
+...
+```
