@@ -1,30 +1,8 @@
 use esp_camera_rs;
 use esp_idf_hal;
 use esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240;
-use rxing::{BarcodeFormat, Binarizer, MultiFormatReader, common::HybridBinarizer};
+use rxing::{BarcodeFormat};
 fn main() {
-    // It is necessary to call this function once. Otherwise, some patches to the runtime
-    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
-
-    use rxing::qrcode::encoder::qrcode_encoder;
-
-    use rxing::qrcode::decoder::{qrcode_decoder, ErrorCorrectionLevel};
-    // use rxing::qrcode::detector::{Detector};
-
-
-    // let matrix = qrcode_encoder::encode("HI", ErrorCorrectionLevel::L).expect("Encode failed");
-
-    // let string = qrcode_decoder::decode_bitmatrix(
-    //     &matrix
-    //         .getMatrix()
-    //         .as_ref()
-    //         .unwrap()
-    //         .clone()
-    //         .try_into()
-    //         .expect("convert"),
-    // )
-    // .expect("decode");
-
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
     /*
     Chip Pin	Description
@@ -69,17 +47,13 @@ fn main() {
         .set_framesize(framesize_t_FRAMESIZE_240X240)
         .unwrap();
 
-    // Unsure what to put in the arguments want 10_000_000 HZ
-    // camera.sensor().set_xclk(
-    //     
-    //     timer: i32, xclk: i32
-    // ).unwrap();
-
     let fb = camera.get_framebuffer().unwrap();
     
     let code = rxing::helpers::detect_in_luma(fb.data().to_vec(), 240, 240, Some(BarcodeFormat::QR_CODE)).expect("decodes");
 
 
+    // It is necessary to call this function once. Otherwise, some patches to the runtime
+    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_svc::sys::link_patches();
 
     // Bind the log crate to the ESP Logging facilities
