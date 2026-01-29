@@ -2,7 +2,10 @@
 
 Initalized with template `cargo generate esp-rs/esp-idf-template cargo`
 
-git submodule add https://github.com/jlocash/esp-camera-rs
+Using rxing crate: https://github.com/rxing-core/rxing
+
+Using [esp-camera-rs](https://github.com/jlocash/esp-camera-rs)
+`git submodule add https://github.com/jlocash/esp-camera-rs`
 
 https://github.com/jlocash/esp-camera-rs
 
@@ -25,12 +28,12 @@ E (739) i2c: i2c_driver_delete(481): i2c driver install error
 
 Found implementation for camera_config_t using ripgrep `rg "camera_config_t"`: `esp32-camera/driver/include/esp_camera.h`
 
-Need to connect `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
+Needed to connect the  `rxing-test-esp/target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
 ``` rust
 pub struct camera_config_t {
 ...
-        pub __bindgen_anon_1: camera_config_t__bindgen_ty_1,
-        pub __bindgen_anon_2: camera_config_t__bindgen_ty_2,
+    pub __bindgen_anon_1: camera_config_t__bindgen_ty_1,
+    pub __bindgen_anon_2: camera_config_t__bindgen_ty_2,
 ...
     }
 ...
@@ -52,12 +55,12 @@ pub struct camera_config_t {
 Added to `esp-camera-rs/src/lib.rs`:
 ``` rust
 let config = camera::camera_config_t {
-            pin_pwdn: pin_pwdn.pin(),
-            pin_reset: pin_reset.pin(),
-            pin_xclk: pin_xclk.pin(),
+    pin_pwdn: pin_pwdn.pin(),
+    pin_reset: pin_reset.pin(),
+    pin_xclk: pin_xclk.pin(),
 
-            __bindgen_anon_1: camera::camera_config_t__bindgen_ty_1 { pin_sccb_sda: pin_sccb_sda.pin() },
-            __bindgen_anon_2: camera::camera_config_t__bindgen_ty_2 { pin_sccb_scl: pin_sccb_scl.pin() },
+    __bindgen_anon_1: camera::camera_config_t__bindgen_ty_1 { pin_sccb_sda: pin_sccb_sda.pin() },
+    __bindgen_anon_2: camera::camera_config_t__bindgen_ty_2 { pin_sccb_scl: pin_sccb_scl.pin() },
 ```
 
 
@@ -85,12 +88,12 @@ Maybe enabling spiram: [ESP32 config docs](https://github.com/jlocash/esp-camera
 https://github.com/esp-rs/esp-idf-sys/issues/177
 `sdkconfig.defaults`
 ``` toml
-    CONFIG_ESP32S3_SPIRAM_SUPPORT=y
-    CONFIG_SPIRAM_MODE_OCT=y
-    CONFIG_SPIRAM_SPEED_80M=y
-    CONFIG_SPIRAM_BOOT_INIT=y
-    CONFIG_SPIRAM_USE_MALLOC=y
-    CONFIG_SPIRAM_ALLOCATOR_CONTIGUITY_8K=y
+CONFIG_ESP32S3_SPIRAM_SUPPORT=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_ALLOCATOR_CONTIGUITY_8K=y
 ```
 
 ## Frame buffer
@@ -107,12 +110,13 @@ W (5463) cam_hal: Failed to get the frame on time!
 **Solution:**
 Set image size and shape in `esp-camera-rs/src/lib.rs`:
 ``` rust
-    let config = camera::camera_config_t {
+let config = camera::camera_config_t {
 ...
-        xclk_freq_hz: 10_000_000, // <-- for the frame buffer
+    xclk_freq_hz: 10_000_000, // <-- for the frame buffer
 ...
-        pixel_format: camera::pixformat_t_PIXFORMAT_GRAYSCALE,
-        frame_size: camera::framesize_t_FRAMESIZE_240X240,
+    pixel_format: camera::pixformat_t_PIXFORMAT_GRAYSCALE,
+    frame_size: camera::framesize_t_FRAMESIZE_240X240,
+...
 ```
 
 
@@ -127,21 +131,21 @@ Needed to reduce from `20MHZ` to `10MHZ` to fit the framebuffer.
 Need to determine what to put in set_xclk as arguments for `timer` `xclk`
 
 ``` rust
-    pub fn set_xclk(&self, timer: i32, xclk: i32) -> Result<(), EspError> {
-        esp!(unsafe { (*self.sensor).set_xclk.unwrap()(self.sensor, timer, xclk) })
-    }
+pub fn set_xclk(&self, timer: i32, xclk: i32) -> Result<(), EspError> {
+    esp!(unsafe { (*self.sensor).set_xclk.unwrap()(self.sensor, timer, xclk) })
+}
 ```
 
 `target/xtensa-esp32s3-espidf/debug/build/esp-idf-sys-71e9ff740e433849/out/bindings.rs`
 ``` rust
 ...
-    pub set_xclk: ::core::option::Option<
-        unsafe extern "C" fn(
-            sensor: *mut sensor_t,
-            timer: ::core::ffi::c_int,
-            xclk: ::core::ffi::c_int,
-        ) -> ::core::ffi::c_int,
-    >,
+pub set_xclk: ::core::option::Option<
+    unsafe extern "C" fn(
+        sensor: *mut sensor_t,
+        timer: ::core::ffi::c_int,
+        xclk: ::core::ffi::c_int,
+    ) -> ::core::ffi::c_int,
+>,
 ...
 ```
 
@@ -163,6 +167,7 @@ abort() was called at PC 0x420b04c6 on core 0
 0x420b04c6 - std::sys::pal::unix::abort_internal
 ```
 
+**Error:**
 Was crashing but it was just the `Some` was not being handeled. Was using `expect` -> now using match.
 From the docs:
 ``` docs
