@@ -1,11 +1,11 @@
 # QR-Code scanning in rust on the Xiao ESP32s3 Sense
 <br>
 
-Initalized with esp-rs [template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
+Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
 
-QR code crate **rxing** crate: https://github.com/rxing-core/rxing
+QR code crate [**rxing**](https://github.com/rxing-core/rxing)
 
-Using [esp-camera-rs](https://github.com/jlocash/esp-camera-rs)
+Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
 `git submodule add https://github.com/jlocash/esp-camera-rs`
 
 ### Features
