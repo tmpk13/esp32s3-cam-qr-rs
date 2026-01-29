@@ -167,6 +167,7 @@ let config = camera::camera_config_t {
 ...
 ```
 
+Added to `esp-camera-rs/src/lib.rs`:
 ``` rust
 impl<'a> Camera<'a> {
     pub fn new(
