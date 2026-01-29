@@ -1,15 +1,23 @@
 # QR-Code scanning in Rust on the Xiao *ESP32s3 Sense*
 <br>
 
+
+Using the Xiao Esp32s3 Sense to scan QR codes with the [**rxing**](https://github.com/rxing-core/rxing) crate.
+This uses the esp [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
+
+
+
 Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
 
 QR code crate [**rxing**](https://github.com/rxing-core/rxing)
 
 Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
-`git submodule add https://github.com/jlocash/esp-camera-rs`
+
 
 ### Features
 `loop`: Attempt detection once every 10 seconds
+
+<img width="391" height="253" alt="image" src="https://github.com/user-attachments/assets/22eb83cf-2e0b-4efc-8aba-e066f9c0d849" />
 
 
 ---
@@ -21,9 +29,15 @@ Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
 <br>
 <br>
 
+
+
+
 # Implementation log
 <details>
 <summary><b>Click to expand</b></summary>
+
+## Add wrapper
+`git submodule add https://github.com/jlocash/esp-camera-rs`
 
 ## Setup esp-camera
 [esp-idf remote components](https://docs.esp-rs.org/esp-idf-hal/esp_idf_sys/index.html#remote-components-idf-component-registry)
@@ -154,12 +168,14 @@ let config = camera::camera_config_t {
 
 
 
-## Still need to fix
-The frames were set by going into the library
-But would be nice to set from outside
+
 
 Needed to reduce from `20MHZ` to `10MHZ` to fit the framebuffer. 
 *Too fast?*
+
+### Still need to explore
+The frames were set by going into the library
+But would be nice to set from outside
 
 Need to determine what to put in set_xclk as arguments for `timer` `xclk`
 
@@ -210,7 +226,6 @@ Because this function may panic, its use is generally discouraged. Instead, pref
 ```
 </details>
 
-<br>
 <br>
 
 ---
