@@ -1,5 +1,5 @@
 [package]
-name = "rxing-test-esp"
+name = "esp32s3-cam-qr-rs"
 version = "0.1.0"
 authors = ["tmpk <>"]
 edition = "2021"
@@ -7,7 +7,7 @@ resolver = "2"
 rust-version = "1.77"
 
 [[bin]]
-name = "rxing-test-esp"
+name = "esp32s3-cam-qr-rs"
 harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
 
 [profile.release]
@@ -19,6 +19,7 @@ opt-level = "z"
 
 [features]
 default = []
+loop=[]
 
 experimental = ["esp-idf-svc/experimental"]
 
@@ -57,6 +58,3 @@ remote_component = { name = "espressif/esp32-camera", version = "2.0.7" }
 bindings_header = "bindings.h"
 bindings_module = "camera"
 
-
-[features]
-loop=[]

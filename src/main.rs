@@ -1,7 +1,7 @@
 use esp_camera_rs;
 use esp_idf_hal;
 use esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240;
-use rxing::{BarcodeFormat};
+use rxing::BarcodeFormat;
 
 fn main() {
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
@@ -49,10 +49,9 @@ fn main() {
         .unwrap();
 
     let fb = camera.get_framebuffer().unwrap();
-    
-    let code = rxing::helpers::detect_in_luma(fb.data().to_vec(), 240, 240, Some(BarcodeFormat::QR_CODE));
 
-    
+    let code =
+        rxing::helpers::detect_in_luma(fb.data().to_vec(), 240, 240, Some(BarcodeFormat::QR_CODE));
 
     // It is necessary to call this function once. Otherwise, some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
