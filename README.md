@@ -2,16 +2,21 @@
 <br>
 
 
-Using the Xiao Esp32s3 Sense to scan QR codes with the [**rxing**](https://github.com/rxing-core/rxing) crate.
-This uses the esp [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
+Using the Xiao Esp32s3 Sense to scan QR codes with the [**rxing**](https://github.com/rxing-core/rxing) barcode crate.  
+This uses the [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs) crate modified for the Xiao esp32s3.  
 
 
+*Will update with modified code from esp-camera-rs crate*
+
+---
+
+<br>
 
 Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
 
-QR code crate [**rxing**](https://github.com/rxing-core/rxing)
+QR code crate [**rxing**](https://github.com/rxing-core/rxing).
 
-Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
+Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs).
 
 
 ### Features
