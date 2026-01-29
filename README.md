@@ -59,4 +59,10 @@ let config = camera::camera_config_t {
 ```
 
 
-
+Error:
+```
+E (879) cam_hal: cam_dma_config(301): frame buffer malloc failed
+E (889) cam_hal: cam_config(385): cam_dma_config failed
+E (899) camera: Camera config failed with error 0xffffffff
+```
+Not enough memory?
