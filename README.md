@@ -21,6 +21,23 @@ Using [esp-camera-rs](https://github.com/jlocash/esp-camera-rs)
 <br>
 
 
+## Setup esp-camera
+[esp-idf remote components](https://docs.esp-rs.org/esp-idf-hal/esp_idf_sys/index.html#remote-components-idf-component-registry)
+`Cargo.toml`
+``` toml
+[[package.metadata.esp-idf-sys.extra_components]]
+remote_component = { name = "espressif/esp32-camera", version = "2.0.7" }
+bindings_header = "bindings.h"
+bindings_module = "camera"
+```
+`bindings.h`
+``` c
+// https://docs.esp-rs.org/esp-idf-hal/esp_idf_sys/index.html#remote-components-idf-component-registry
+#if defined(ESP_IDF_COMP_ESPRESSIF__ESP32_CAMERA_ENABLED)
+#include "esp_camera.h"
+#endif
+```
+
 ## Updated esp-idf in esp-camera-rs
 Updated the versions for idf crates in ./esp-camera-rs/Cargo.toml
 ``` toml
