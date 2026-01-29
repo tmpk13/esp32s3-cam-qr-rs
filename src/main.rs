@@ -56,6 +56,7 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
+        10_000_000, // Set serial clock to 10MHZ
     )
     .unwrap();
 
@@ -65,11 +66,6 @@ fn main() {
     camera
         .sensor()
         .set_framesize(esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240)
-        .unwrap();
-    // Set clock to 10MHZ
-    camera
-        .sensor()
-        .set_xclk(0, 10_000_000)
         .unwrap();
 
     fn detect(camera: &esp_camera_rs::Camera) {
