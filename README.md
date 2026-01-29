@@ -76,3 +76,5 @@ Unsure if it actually effects the build
 Still breaking
 
 Maybe enabling spiram: https://github.com/jlocash/esp-camera-rs/blob/main/sdkconfig.defaults
+
+https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/kconfig-reference.html#component-config-esp-driver-camera-controller-configurations
