@@ -57,7 +57,7 @@ bindings_module = "camera"
 ```
 
 ## Updated esp-idf in esp-camera-rs
-Updated the versions for idf crates in ./esp-camera-rs/Cargo.toml
+Updated the versions for idf crates in `./esp-camera-rs/Cargo.toml`
 ``` toml
 [dependencies]
 esp-idf-hal = "0.45.2"
@@ -167,14 +167,36 @@ let config = camera::camera_config_t {
 ...
 ```
 
+``` rust
+impl<'a> Camera<'a> {
+    pub fn new(
+...
+        pin_pclk: impl Peripheral<P = impl InputPin + OutputPin> + 'a,
+        
+        pin_sccb_sda: impl Peripheral<P = impl InputPin + OutputPin> + 'a,
+        pin_sccb_scl: impl Peripheral<P = impl InputPin + OutputPin> + 'a,
 
+        xclk_freq_hz: i32,
 
+    ) -> Result<Self, esp_idf_sys::EspError> {
+...
+        let config = camera::camera_config_t {
+...
+            pin_vsync: pin_vsync.pin(),
+            pin_href: pin_href.pin(),
+            pin_pclk: pin_pclk.pin(),
+            
 
+            xclk_freq_hz: xclk_freq_hz,
+            ledc_timer: esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
+...
+        };
+```
 
 Needed to reduce from `20MHZ` to `10MHZ` to fit the framebuffer. 
 *Too fast?*
 
-### Still need to explore
+### Reduce clock speed
 The frames were set by going into the library
 But would be nice to set from outside
 
