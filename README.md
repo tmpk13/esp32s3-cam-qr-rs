@@ -1,5 +1,7 @@
 # Xiao ESP32s3 Sense QR-Code scanning in rust using the ESP-IDF
 
+Initalized with template `cargo generate esp-rs/esp-idf-template cargo`
+
 git submodule add https://github.com/jlocash/esp-camera-rs
 
 https://github.com/jlocash/esp-camera-rs
@@ -66,3 +68,9 @@ E (889) cam_hal: cam_config(385): cam_dma_config failed
 E (899) camera: Camera config failed with error 0xffffffff
 ```
 Not enough memory?
+
+Changed target in `esp-camera-rs/.cargo/config.toml`
+`target = "xtensa-esp32s3-espidf"`
+Unsure if it actually effects the build
+
+Still breaking
