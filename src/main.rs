@@ -56,11 +56,17 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
+        esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
+        esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
+        esp_camera_rs::FRAMESIZE_240X240, // 240x240 frame size
         10_000_000, // Set serial clock to 10MHZ
+        esp_camera_rs::CAMERA_GRAB_WHEN_EMPTY // Grab when empty
+
     )
     .unwrap();
 
-    // Set framesize to 240x240
+    // Set framesize to 240x240 
+    // Constants for the qrcode scanner set to equal frame dimensions
     const FRAME_WIDTH: u32 = 240;
     const FRAME_HEIGHT: u32 = 240;
     camera
@@ -82,17 +88,17 @@ fn main() {
 
         // Handel successful detection and no qrcode found cases
         match qrcode {
-            Ok(c) => log::info!("QRcode: {}", c.getText()),
-            Err(e) => log::info!("No qrcode found {}", e),
+            Ok(c) => log::info!("QRcode found --> {} <--", c.getText()),
+            Err(e) => log::info!("No qrcode found: {}", e),
         }
     }
 
     // If loop feature is enabled attempt to detect every 10s
     if cfg!(feature = "loop") {
-        // Loop every 10s and detect
+        // Loop every 5s and detect
         loop {
             detect(&camera);
-            esp_idf_hal::delay::Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), 10_000);
+            esp_idf_hal::delay::Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), 5_000);
         }
     } else {
         // Detect once and exit
