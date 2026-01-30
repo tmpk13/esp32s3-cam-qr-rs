@@ -155,8 +155,8 @@ cam_hal: EV-VSYNC-OVF
 W (5463) cam_hal: Failed to get the frame on time!
 ```
 
-**Solution:**
-Set image size and shape in `esp-camera-rs/src/lib.rs`:
+~~**Solution:**
+Set image size and shape in `esp-camera-rs/src/lib.rs`:~~
 ``` rust
 let config = camera::camera_config_t {
 ...
@@ -166,6 +166,8 @@ let config = camera::camera_config_t {
     frame_size: camera::framesize_t_FRAMESIZE_240X240,
 ...
 ```
+
+### Reduce clock speed
 
 Added to `esp-camera-rs/src/lib.rs`:
 ``` rust
@@ -197,11 +199,11 @@ impl<'a> Camera<'a> {
 Needed to reduce from `20MHZ` to `10MHZ` to fit the framebuffer. 
 *Too fast?*
 
-### Reduce clock speed
+
 The frames were set by going into the library
 But would be nice to set from outside
 
-Need to determine what to put in set_xclk as arguments for `timer` `xclk`
+Needed to determine what to put in set_xclk as arguments for `timer` `xclk`
 
 ``` rust
 pub fn set_xclk(&self, timer: i32, xclk: i32) -> Result<(), EspError> {
@@ -254,4 +256,4 @@ Because this function may panic, its use is generally discouraged. Instead, pref
 
 ---
 
-### Claude Sonnet 4.5 was used for some debuging of errors <br> No code or output was used directely or copied from LLM output
+#### Claude Sonnet 4.5 was used for some debuging of errors <br> No code or output was used directely or copied from LLM output
