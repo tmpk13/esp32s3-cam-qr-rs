@@ -7,10 +7,18 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
-use esp_idf_hal::{gpio::{Output, OutputMode, OutputPin}, spi::config::Mode};
+use esp_idf_hal::gpio::{Output, PinDriver};
+
+
+
 
 
 const DETECT_INTERVAL_SECONDS: u32 = 3;
+
+const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
+
+
+
 
 fn main() {
     // Esp-idf setup
@@ -25,8 +33,7 @@ fn main() {
     // Get esp32s3 pins
     let peripherals = esp_idf_hal::peripherals::Peripherals::take().unwrap();
 
-    let mut led = peripherals.pins.gpio21;
-
+    
 
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
     /* Camera
@@ -111,13 +118,11 @@ fn main() {
         loop {
             
             detect(&camera);
-            esp_idf_hal::delay::Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), DETECT_INTERVAL_SECONDS * 1000);
+            
+            use esp_idf_hal::delay::Delay;
 
-            // led
-            match esp_idf_hal::gpio::PinDriver::output(&mut led) {
-                Ok(mut p) => { p.set_high().expect("Error led failed") },
-                Err(e) => log::info!("Led failed: {:?}", e)
-            }
+            // Wait for detection again
+            Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), DETECT_INTERVAL_MS);
         }
     } else {
         // Detect once and exit
