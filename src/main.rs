@@ -7,9 +7,13 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
+use esp_idf_hal::{gpio::{Output, OutputMode, OutputPin}, spi::config::Mode};
+
+
+const DETECT_INTERVAL_SECONDS: u32 = 3;
+
 fn main() {
     // Esp-idf setup
-
     // It is necessary to call this function once. Otherwise, some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_svc::sys::link_patches();
@@ -17,8 +21,12 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+
     // Get esp32s3 pins
     let peripherals = esp_idf_hal::peripherals::Peripherals::take().unwrap();
+
+    let mut led = peripherals.pins.gpio21;
+
 
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
     /* Camera
@@ -56,11 +64,15 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
+        10_000_000, // Set serial clock to 10MHZ
         esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
+        esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
+
         esp_camera_rs::FRAMESIZE_240X240, // 240x240 frame size
-        10_000_000, // Set serial clock to 10MHZ
-        esp_camera_rs::CAMERA_GRAB_WHEN_EMPTY // Grab when empty
+        12, // JPEG Quality
+        1, // Frame buffer count
+        esp_camera_rs::CAMERA_GRAB_WHEN_EMPTY, // Grab mode: when empty
 
     )
     .unwrap();
@@ -93,12 +105,19 @@ fn main() {
         }
     }
 
-    // If loop feature is enabled attempt to detect every 10s
+    // If loop feature is enabled attempt to detect every interval
     if cfg!(feature = "loop") {
-        // Loop every 5s and detect
+        // Loop every 3s and detect
         loop {
+            
             detect(&camera);
-            esp_idf_hal::delay::Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), 5_000);
+            esp_idf_hal::delay::Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), DETECT_INTERVAL_SECONDS * 1000);
+
+            // led
+            match esp_idf_hal::gpio::PinDriver::output(&mut led) {
+                Ok(mut p) => { p.set_high().expect("Error led failed") },
+                Err(e) => log::info!("Led failed: {:?}", e)
+            }
         }
     } else {
         // Detect once and exit

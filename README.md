@@ -9,7 +9,7 @@ Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)
 `git submodule add https://github.com/jlocash/esp-camera-rs`
 
 ### Features
-`loop`: Attempt detection once every 10 seconds
+`loop`: Attempt detection once every 3 seconds
 
 
 ---
