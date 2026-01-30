@@ -9,16 +9,11 @@ On the Xiao esp32s3 sense w/ camera
 
 use esp_idf_hal::gpio::{Output, PinDriver};
 
-
-
-
-
 const DETECT_INTERVAL_SECONDS: u32 = 3;
 
 const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
 
-
-
+;
 
 fn main() {
     // Esp-idf setup
@@ -32,6 +27,23 @@ fn main() {
 
     // Get esp32s3 pins
     let peripherals = esp_idf_hal::peripherals::Peripherals::take().unwrap();
+
+    
+    let mut led = esp_idf_hal::gpio::PinDriver::output(peripherals.pins.gpio21).unwrap();
+    let _ = led.set_low();
+
+    fn blink_led(led: &mut  PinDriver<'_, esp_idf_svc::hal::gpio::Gpio21, Output>, delay_ms: u32, count:u8) {
+        let mut count = count;
+        while count > 0 {
+            use esp_idf_hal::delay::Delay;
+            // led
+            let _ = led.toggle();
+            Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), delay_ms);
+            
+            count -= 1;
+        }
+        
+    }
 
     
 
@@ -88,12 +100,8 @@ fn main() {
     // Constants for the qrcode scanner set to equal frame dimensions
     const FRAME_WIDTH: u32 = 240;
     const FRAME_HEIGHT: u32 = 240;
-    camera
-        .sensor()
-        .set_framesize(esp_idf_sys::camera::framesize_t_FRAMESIZE_240X240)
-        .unwrap();
 
-    fn detect(camera: &esp_camera_rs::Camera) {
+    fn detect(camera: &esp_camera_rs::Camera) -> bool {
         // Get frame buffer from camera
         let frame_buffer = camera.get_framebuffer().unwrap();
 
@@ -107,8 +115,11 @@ fn main() {
 
         // Handel successful detection and no qrcode found cases
         match qrcode {
-            Ok(c) => log::info!("QRcode found --> {} <--", c.getText()),
-            Err(e) => log::info!("No qrcode found: {}", e),
+            Ok(c) => {
+                log::info!("QRcode found --> {} <--", c.getText());
+                true
+            }
+            Err(e) => { log::info!("No qrcode found: {}", e); false }
         }
     }
 
@@ -117,7 +128,10 @@ fn main() {
         // Loop every 3s and detect
         loop {
             
-            detect(&camera);
+            match detect(&camera) {
+                true => {blink_led(&mut led, 100, 2);}
+                false => {}
+            }
             
             use esp_idf_hal::delay::Delay;
 
