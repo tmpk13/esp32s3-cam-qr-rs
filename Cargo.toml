@@ -28,9 +28,11 @@ log = "0.4"
 esp-idf-svc = "0.51"
 rxing = { version = "0.8.2", default-features = false }
 
-esp-camera-rs = { path = "./esp-camera-rs" }
+esp-camera-rs = { git = "https://github.com/tmpk13/esp-camera-rs", branch = "Config-Access" }
 esp-idf-hal = "0.45.2"
 esp-idf-sys = "0.36.1"
+
+
 
 # --- Optional Embassy Integration ---
 # esp-idf-svc = { version = "0.51", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
@@ -52,6 +54,7 @@ esp-idf-sys = "0.36.1"
 [build-dependencies]
 embuild = "0.33"
 
+# esp camera bindings
 # https://docs.esp-rs.org/esp-idf-hal/esp_idf_sys/index.html#remote-components-idf-component-registry
 [[package.metadata.esp-idf-sys.extra_components]]
 remote_component = { name = "espressif/esp32-camera", version = "2.0.7" }

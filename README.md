@@ -14,12 +14,55 @@ This uses the [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs) crat
 
 Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
 
+<<<<<<< HEAD
+=======
+QR code crate [**rxing**](https://github.com/rxing-core/rxing)
+
+Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)  
+Modified wrapper: https://github.com/tmpk13/esp-camera-rs
+>>>>>>> staging
 
 ### Features
-`loop`: Attempt detection once every 3 seconds
+`loop`: Attempt detection once every 3 seconds.
 
 <img width="391" height="253" alt="image" src="https://github.com/user-attachments/assets/22eb83cf-2e0b-4efc-8aba-e066f9c0d849" />
 
+
+
+# Camera config
+This was tested with an `OV2640` camera sensor.  
+The newer Xiao esp32s3 senses are coming with the OV3660.
+
+**You may need to change:  
+`CONFIG_OV2640_SUPPORT=y`  to `CONFIG_OV3660_SUPPORT=y`  
+In `sdkconfig.defaults`**
+
+## Example QR code
+*It works!*
+```
+██████████████        ██    ██████████████
+██          ██      ████    ██          ██
+██  ██████  ██  ██    ██    ██  ██████  ██
+██  ██████  ██  ██  ██      ██  ██████  ██
+██  ██████  ██  ██      ██  ██  ██████  ██
+██          ██  ████  ██    ██          ██
+██████████████  ██  ██  ██  ██████████████
+                ██  ██
+██  ██████████    ██  ██    ██████████
+██████  ████      ████████      ██████████
+        ██████  ██████  ██████      ████
+████  ██  ██  ████    ████      ██  ████
+████  ██  ████  ████    ██  ██████      ██
+                ██      ██    ████  ██
+██████████████      ████  ██        ████
+██          ██  ██████        ██████████
+██  ██████  ██  ██  ████      ██  ██    ██
+██  ██████  ██  ██    ████████  ██████
+██  ██████  ██  ██      ██  ██    ██
+██          ██    ██  ████████  ██████
+██████████████  ████    ██      ██    ██
+```
+*Generated with the `qrcode` rust crate*
 
 ---
 <br>
@@ -27,9 +70,8 @@ Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template
 **Todo**
 - [ ] Add range detection (lidar?) for qr to make sure the code is in frame
 
-<br>
-<br>
 
+<<<<<<< HEAD
 
 
 
@@ -251,6 +293,8 @@ Returns the contained [Ok] value, consuming the self value.
 Because this function may panic, its use is generally discouraged. Instead, prefer to use pattern matching and handle the [Err] case explicitly, or call unwrap_or, unwrap_or_else, or unwrap_or_default.
 ```
 </details>
+=======
+>>>>>>> staging
 
 <br>
 
