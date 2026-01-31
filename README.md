@@ -6,7 +6,7 @@ Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template
 QR code crate [**rxing**](https://github.com/rxing-core/rxing)
 
 Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)  
-Modified version: https://github.com/tmpk13/esp-camera-rs
+Modified wrapper: https://github.com/tmpk13/esp-camera-rs
 
 ### Features
 `loop`: Attempt detection once every 3 seconds.
@@ -46,7 +46,7 @@ In `sdkconfig.defaults`**
 ██          ██    ██  ████████  ██████
 ██████████████  ████    ██      ██    ██
 ```
-*Generated with the `qrcode` crate*
+*Generated with the `qrcode` rust crate*
 
 ---
 <br>
@@ -54,8 +54,6 @@ In `sdkconfig.defaults`**
 **Todo**
 - [ ] Add range detection (lidar?) for qr to make sure the code is in frame
 
-<br>
-<br>
 
 
 <br>
