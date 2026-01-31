@@ -3,10 +3,9 @@
 
 
 Using the Xiao Esp32s3 Sense to scan QR codes with the [**rxing**](https://github.com/rxing-core/rxing) barcode crate.  
-This uses the [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs) crate modified for the Xiao esp32s3.  
 
-
-*Will update with modified code from esp-camera-rs crate*
+This uses the [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs) wrapper, modified for the Xiao esp32s3.  
+Modifed wrapper: https://github.com/tmpk13/esp-camera-rs/tree/Config-Access
 
 ---
 
