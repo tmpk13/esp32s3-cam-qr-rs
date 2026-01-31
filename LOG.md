@@ -185,3 +185,6 @@ Returns the contained [Ok] value, consuming the self value.
 
 Because this function may panic, its use is generally discouraged. Instead, prefer to use pattern matching and handle the [Err] case explicitly, or call unwrap_or, unwrap_or_else, or unwrap_or_default.
 ```
+
+*Error Found:* no target
+Added `rust-toolchain.toml` to repo
