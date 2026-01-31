@@ -51,7 +51,7 @@ fn main() {
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
     let _ = led.set_high();
 
-    // Blink led with frequency and repetition count
+    // Blink led with specified frequency and repetition count
     fn blink_led(led: &mut  PinDriver<'_, gpio::Gpio21, Output>, delay_ms: u32, repeat_count:u8) {
         let mut blink_count = repeat_count;
         // Blink set number of times
