@@ -27,6 +27,12 @@ const DETECT_INTERVAL_SECONDS: u32 = 3;
 const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
 
 
+// Constants for the qrcode scanner set to equal frame dimensions
+// FRAME_WIDTH and FRAME_HEIGHT must match dimensions of FRAMESIZE 
+// (see esp-camera-rs for FRAMESIZE constants)
+const FRAME_WIDTH: u32 = 240;
+const FRAME_HEIGHT: u32 = 240;
+const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
 
 fn main() {
     // Esp-idf setup
@@ -48,11 +54,13 @@ fn main() {
     // Blink led with frequency and repetition count
     fn blink_led(led: &mut  PinDriver<'_, gpio::Gpio21, Output>, delay_ms: u32, repeat_count:u8) {
         let mut blink_count = repeat_count;
-
+        // Blink set number of times
         while blink_count > 0 {
             // Blink led on and off
+            // Set low to turn on
             let _ = led.set_low();
             Delay::delay_ms(&Delay::default(), delay_ms);
+            // Set high to turn off
             let _ = led.set_high();
             if repeat_count > 1 { Delay::delay_ms(&Delay::default(), delay_ms); }
             
@@ -102,7 +110,7 @@ fn main() {
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
         esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
 
-        esp_camera_rs::FRAMESIZE_240X240, // 240x240 frame size
+        FRAMESIZE, // 240x240 frame size
         12, // JPEG Quality
         1, // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_WHEN_EMPTY, // Grab mode: when empty
@@ -111,9 +119,7 @@ fn main() {
     .unwrap();
 
     // Set framesize to 240x240 
-    // Constants for the qrcode scanner set to equal frame dimensions
-    const FRAME_WIDTH: u32 = 240;
-    const FRAME_HEIGHT: u32 = 240;
+    
 
     fn detect(camera: &esp_camera_rs::Camera) -> bool {
         // Get frame buffer from camera
@@ -141,7 +147,7 @@ fn main() {
     if cfg!(feature = "loop") {
         // Loop every 3s and detect
         loop {
-            
+            // Blink quickly when code detected, once for scan
             match detect(&camera) {
                 true => { blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT); }
                 false => { blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT); }
@@ -152,6 +158,9 @@ fn main() {
         }
     } else {
         // Detect once and exit
-        detect(&camera);
+        match detect(&camera) {
+            true => { blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT); }
+            false => { blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT); }
+        }
     }
 }
