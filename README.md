@@ -14,13 +14,6 @@ This uses the [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs) crat
 
 Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
 
-<<<<<<< HEAD
-=======
-QR code crate [**rxing**](https://github.com/rxing-core/rxing)
-
-Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)  
-Modified wrapper: https://github.com/tmpk13/esp-camera-rs
->>>>>>> staging
 
 ## Features
 `loop`: Attempt detection once every *3 seconds*.
