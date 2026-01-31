@@ -7,13 +7,25 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
-use esp_idf_hal::gpio::{Output, PinDriver};
+use esp_idf_hal::{
+    delay::Delay,
+    gpio,
+    gpio::{Output, PinDriver},
+    peripherals::Peripherals,
+};
 
+// Blink count and frequency for signaling a scan
+const QR_SCAN_LED_BLINK_COUNT: u32 = 1;
+const QR_SCAN_LED_DELAY_MS: u32 = 500;
+
+// Blink count and frequency for signaling a successful scan
+const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
+const QR_FOUND_LED_DELAY_MS: u32 = 10;
+
+// QR code scanning delay
 const DETECT_INTERVAL_SECONDS: u32 = 3;
 
 const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
-
-;
 
 fn main() {
     // Esp-idf setup
@@ -24,28 +36,32 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+    // Get esp32s3 peripherals
+    let peripherals = Peripherals::take().unwrap();
 
-    // Get esp32s3 pins
-    let peripherals = esp_idf_hal::peripherals::Peripherals::take().unwrap();
-
-    
-    let mut led = esp_idf_hal::gpio::PinDriver::output(peripherals.pins.gpio21).unwrap();
+    // Setup led (if you want to change led pin you must change the type in blink_led fn)
+    let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
     let _ = led.set_low();
 
-    fn blink_led(led: &mut  PinDriver<'_, esp_idf_svc::hal::gpio::Gpio21, Output>, delay_ms: u32, count:u8) {
-        let mut count = count;
-        while count > 0 {
-            use esp_idf_hal::delay::Delay;
-            // led
-            let _ = led.toggle();
-            Delay::delay_ms(&esp_idf_hal::delay::Delay::default(), delay_ms);
-            
-            count -= 1;
-        }
-        
-    }
+    // Blink led with frequency and repetition count
+    fn blink_led(led: &mut PinDriver<'_, gpio::Gpio21, Output>, delay_ms: u32, repeat_count: u8) {
+        let mut blink_count = repeat_count;
 
-    
+        // Set high immediately
+        let _ = led.set_high();
+
+        while blink_count > 0 {
+            // Blink led on and off
+            let _ = led.set_high();
+            Delay::delay_ms(&Delay::default(), delay_ms);
+            let _ = led.set_low();
+            if repeat_count > 1 {
+                Delay::delay_ms(&Delay::default(), delay_ms);
+            }
+
+            blink_count -= 1;
+        }
+    }
 
     // https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/#hardware-overview
     /* Camera
@@ -83,20 +99,18 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
-        10_000_000, // Set serial clock to 10MHZ
+        10_000_000,              // Set serial clock to 10MHZ
         esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
         esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
-
-        esp_camera_rs::FRAMESIZE_240X240, // 240x240 frame size
-        12, // JPEG Quality
-        1, // Frame buffer count
+        esp_camera_rs::FRAMESIZE_240X240,   // 240x240 frame size
+        12,                                 // JPEG Quality
+        1,                                  // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_WHEN_EMPTY, // Grab mode: when empty
-
     )
     .unwrap();
 
-    // Set framesize to 240x240 
+    // Set framesize to 240x240
     // Constants for the qrcode scanner set to equal frame dimensions
     const FRAME_WIDTH: u32 = 240;
     const FRAME_HEIGHT: u32 = 240;
@@ -119,7 +133,10 @@ fn main() {
                 log::info!("QRcode found --> {} <--", c.getText());
                 true
             }
-            Err(e) => { log::info!("No qrcode found: {}", e); false }
+            Err(e) => {
+                log::info!("No qrcode found: {}", e);
+                false
+            }
         }
     }
 
@@ -127,12 +144,13 @@ fn main() {
     if cfg!(feature = "loop") {
         // Loop every 3s and detect
         loop {
-            
             match detect(&camera) {
-                true => {blink_led(&mut led, 100, 2);}
+                true => {
+                    blink_led(&mut led, 100, 2);
+                }
                 false => {}
             }
-            
+
             use esp_idf_hal::delay::Delay;
 
             // Wait for detection again
