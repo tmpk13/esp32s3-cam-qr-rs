@@ -39,6 +39,8 @@ Flashing many times **quickly** for a successful scan.
 I tested with the esp32s3 in a 3D printed housing to keep the camera pointed straight.  
 The scanning was **successful** at around `12 inches` for a `1 inch` QR code. 
 
+QR code used:
+
 *It works!*
 ```
 ██████████████        ██    ██████████████
