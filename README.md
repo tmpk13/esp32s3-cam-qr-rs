@@ -8,12 +8,13 @@ QR code crate [**rxing**](https://github.com/rxing-core/rxing)
 Camera wrapper [**esp-camera-rs**](https://github.com/jlocash/esp-camera-rs)  
 Modified wrapper: https://github.com/tmpk13/esp-camera-rs
 
-### Features
-`loop`: Attempt detection once every 3 seconds.
+## Features
+`loop`: Attempt detection once every *3 seconds*.
 
 
 
-# Camera config
+## Camera config
+
 This was tested with an `OV2640` camera sensor.  
 The newer Xiao esp32s3 senses are coming with the OV3660.
 
@@ -21,7 +22,14 @@ The newer Xiao esp32s3 senses are coming with the OV3660.
 `CONFIG_OV2640_SUPPORT=y`  to `CONFIG_OV3660_SUPPORT=y`  
 In `sdkconfig.defaults`**
 
-## Example QR code
+## Testing with a QR code
+
+The camera will flash **once** for an unsuccessful scan.  
+Flashing many times **quickly** for a successful scan.
+
+I tested with the esp32s3 in a 3D printed housing to keep the camera pointed straight.  
+The scanning was **successful** at around `12 inches` for a `1 inch` QR code. 
+
 *It works!*
 ```
 ██████████████        ██    ██████████████
@@ -47,6 +55,8 @@ In `sdkconfig.defaults`**
 ██████████████  ████    ██      ██    ██
 ```
 *Generated with the `qrcode` rust crate*
+
+
 
 ---
 <br>
