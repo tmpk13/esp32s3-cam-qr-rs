@@ -118,9 +118,8 @@ fn main() {
     )
     .unwrap();
 
-    // Set framesize to 240x240 
-    
 
+    // Using frame buffer search for a qrcode
     fn detect(camera: &esp_camera_rs::Camera) -> bool {
         // Get frame buffer from camera
         let frame_buffer = camera.get_framebuffer().unwrap();
