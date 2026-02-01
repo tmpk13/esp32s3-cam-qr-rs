@@ -2,7 +2,7 @@
 # podman build -t esp-cam-qr .
 # Run: (Set /dev/ttyACM0 to your device path)
 # podman run --device=/dev/ttyACM0 -it --rm esp-cam-qr
-# This places you in the git directory ready to cargo run
+# This places you in the project directory ready to cargo run
 
 FROM docker.io/rust:slim-bookworm
 
