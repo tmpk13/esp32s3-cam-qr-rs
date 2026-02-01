@@ -1,8 +1,3 @@
-# Build:
-# podman build -t esp-cam-qr .
-# Run: (Set /dev/ttyACM0 to your device path)
-# podman run --device=/dev/ttyACM0 -it --rm esp-cam-qr
-
 FROM docker.io/rust:slim-bookworm
 
 RUN apt-get update && apt-get install -y \
@@ -23,3 +18,8 @@ RUN cargo install espflash --locked
 RUN git clone https://github.com/tmpk13/esp32s3-cam-qr-rs /esp32s3-cam-qr-rs
 
 WORKDIR /esp32s3-cam-qr-rs
+
+# Build:
+# podman build -t esp-cam-qr .
+# Run: (Set /dev/ttyACM0 to your device path)
+# podman run --device=/dev/ttyACM0 -it --rm esp-cam-qr
