@@ -214,7 +214,13 @@ Fixed by reducing display spi speed to `20MHz`. *(Doubt this was needed)*
 ## Image not in greyscale
 Add greyscale to 565 u8 x2
 
-## Now that using a greyscale image should stop inverting 
+## Now that using a greyscale image should stop swaping color? 
+
 
 ## Timing out after first capture
+As frame buffer is increased the number of frames before hitting an error is also increased equally
+Probably not getting rid of the old frames
+*Life time issue?*
+https://doc.rust-lang.org/rust-by-example/scope/lifetime/explicit.html
 
+Remove wrapper and add

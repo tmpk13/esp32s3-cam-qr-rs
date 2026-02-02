@@ -15,6 +15,7 @@ use embedded_graphics::{
     {image::ImageRaw, pixelcolor::Rgb565, prelude::RgbColor},
 };
 
+use esp_camera_rs::FrameBuffer;
 use esp_idf_hal::{
     delay::Delay,
     delay::Ets,
@@ -198,17 +199,15 @@ fn main() {
     )
     .unwrap();
 
-    // Get framebuffer map to vec, map returning an option
-    fn get_framebuffer(camera: &esp_camera_rs::Camera) -> Option<Vec<u8>> {
-        camera.get_framebuffer().map(|fb| fb.data().to_vec())
-    }
+    
+    
 
     // If loop feature is enabled attempt to detect every interval
     loop {
         // Loop every 3s and detect
 
         let qr_string = {
-            let frame_buffer = match get_framebuffer(&camera) {
+            let frame_buffer = match camera.get_framebuffer() {
                 Some(fb) => {
                     log::debug!("Frame captured");
                     fb
@@ -219,7 +218,7 @@ fn main() {
                 }
             };
 
-            let fb_565 = grey_to_565(&frame_buffer);
+            let fb_565 = grey_to_565(&frame_buffer.data());
             let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
             Image::new(&image, Point::zero())
                 .draw(&mut display)
@@ -227,7 +226,7 @@ fn main() {
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
-                frame_buffer,
+                frame_buffer.data().to_vec(),
                 FRAME_WIDTH,
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
