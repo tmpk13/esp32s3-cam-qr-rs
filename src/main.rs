@@ -61,11 +61,12 @@ macro_rules! blink {
 
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
 fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
+    fb_565.clear();
     fb_565.reserve(greyscale.len() * 2);
     for &grey in greyscale {
-        let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
-        let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
-        let b = (grey >> 3) as u16; // 8 - 3 : 5 bits
+        let r = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
+        let g = (grey as u16 * 3) / 255; // 8 - 2 : 6 bits
+        let b = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
         let rgb_565 = (r << 11) | (g << 5) | b;
         // u8 in xxxx xxxx
         // r = 3 >> : 000x xxxx (5 remain)
@@ -84,6 +85,7 @@ fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
         // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
         // To litte endian bytes --> [u8; 2]
         // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
+        
         fb_565.extend_from_slice(&rgb_565.to_le_bytes());
     }
 }
@@ -126,8 +128,8 @@ fn main() {
 
     // Display definition, invert and order colors for GC9A01
     let mut display = Builder::new(GC9A01, di)
-        // .invert_colors(mipidsi::options::ColorInversion::Inverted)
-        .color_order(mipidsi::options::ColorOrder::Bgr)
+        .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        .color_order(mipidsi::options::ColorOrder::Rgb)
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
