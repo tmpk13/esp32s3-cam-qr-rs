@@ -132,7 +132,7 @@ fn main() {
         .init(&mut Ets)
         .unwrap();
 
-    display.clear(Rgb565::RED).unwrap();
+    display.clear(Rgb565::WHITE).unwrap();
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();

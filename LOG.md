@@ -200,7 +200,9 @@ When adding the display to the camera receiving error about stack overflow
 Most likely camera and lcd together using more than reserved  
 Present size: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000`  
 Trying: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=16000`  
-#### [!] Should find a better solution
+[!] Should find a better solution 
+
+Running in release would probably help...
 
 ## Frame buffer timing out
 Fixed by reducing display spi speed to `20MHz`. *(Doubt this was needed)*
@@ -210,3 +212,6 @@ Fixed by reducing display spi speed to `20MHz`. *(Doubt this was needed)*
 **What probably did it was changing the camera buffer count from `1` to `2`.**
 
 ## Image not in greyscale
+Add greyscale to 565 u8 x2
+
+## Now that using a greyscale image should stop inverting 
