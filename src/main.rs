@@ -10,7 +10,11 @@ On the Xiao esp32s3 sense w/ camera
 // use esp32_nimble::BLEDevice;
 
 use embedded_graphics::{
-    Drawable, draw_target::DrawTarget, image::{Image, ImageRaw}, pixelcolor::Rgb565, prelude::{IntoStorage, Point, RgbColor}
+    draw_target::DrawTarget,
+    image::Image,
+    prelude::Point,
+    Drawable,
+    {image::ImageRaw, pixelcolor::Rgb565, prelude::RgbColor},
 };
 
 use esp_idf_hal::{
@@ -33,9 +37,7 @@ const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
 const QR_FOUND_LED_DELAY_MS: u32 = 50;
 
 // QR code scanning delay
-const DETECT_INTERVAL_SECONDS: u32 = 1;
-
-const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
+const DETECT_INTERVAL_MS: u32 = 500;
 
 // Constants for the qrcode scanner set to equal frame dimensions
 // FRAME_WIDTH and FRAME_HEIGHT must match dimensions of FRAMESIZE
@@ -60,9 +62,29 @@ fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
     fb_565.clear();
     fb_565.reserve(greyscale.len() * 2);
     for &grey in greyscale {
-        let pixel = Rgb565::new(grey, grey, grey);
-        
-        fb_565.extend_from_slice(&pixel.into_storage().to_le_bytes());
+        let r = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
+        let g = (grey as u16 * 3) / 255; // 8 - 2 : 6 bits
+        let b = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
+        let rgb_565 = (r << 11) | (g << 5) | b;
+        // u8 in xxxx xxxx
+        // r = 3 >> : 000x xxxx (5 remain)
+        // g = 3 >> : 00xx xxxx (6 remain)
+        // b = 3 >> : 000x xxxx (5 remain)
+        // *Losing the bottom 2-3 bits (integers 0-8)*
+        //
+        //  << 11   << 5  << 0
+        //     \/     \/    \/
+        // xxxxx 000000 00000 r
+        // 00000 xxxxxx 00000 g
+        // 00000 000000 xxxxx b
+        //
+        // | (Or) combines. Each value is shifted. All zeros for the others for a given section
+
+        // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
+        // To litte endian bytes --> [u8; 2]
+        // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
+        Rgb565::new(grey, grey, grey);
+        fb_565.extend_from_slice(&rgb_565.to_le_bytes());
     }
 }
 
