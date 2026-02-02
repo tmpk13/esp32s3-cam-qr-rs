@@ -113,7 +113,7 @@ fn main() {
         None::<AnyIOPin>,
         Some(cs),
         &SpiDriverConfig::new(),
-        &SpiConfig::new().baudrate(20.MHz().into()),
+        &SpiConfig::new().baudrate(40.MHz().into()),
     )
     .unwrap();
 
@@ -207,7 +207,6 @@ fn main() {
     loop {
         // Loop every 3s and detect
 
-        let mut qr_string: String;
 
         let frame_buffer = match get_framebuffer(&camera) {
             Some(fb) => {
@@ -235,7 +234,7 @@ fn main() {
         );
 
         // Handel successful detection and no qrcode found cases
-        qr_string = match qrcode {
+        let mut qr_string = match qrcode {
             Ok(value) => {
                 let text = value.getText().to_string();
                 blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
