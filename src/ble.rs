@@ -1,13 +1,13 @@
 use std::str::from_utf8;
 
-use esp_idf_hal::task::block_on;
+use esp_idf_hal::{delay, task::block_on};
 use esp32_nimble::{uuid128, BLEDevice, BLEScan};
 
-const SERVICE_UUID: &str = option_env!("SERVICE_UUID").expect("No uuid set");
-const MSG_CHAR_UUID: &str = option_env!("SERVICE_UUID").expect("No char uuid set");
-const DEVICE_NAME: &str = option_env!("DEVICE_NAME").expect("No device name set");
+const SERVICE_UUID: &str = "921a6069-4357-4287-a9af-fd386fc0dcad";
+const MSG_CHAR_UUID: &str = "1ad4aa0c-5cb7-4be3-9916-9c63f19c03fd";
+const DEVICE_NAME: &str = "esp-msg";
 
-pub fn send_msg(msg: &str) -> Result<(), &str> {
+pub fn send_command(msg: &str, delay: &esp_idf_hal::delay::Delay) -> Result<(), String> {
     block_on(async{
         let ble_device = BLEDevice::take();
         let mut ble_scan = BLEScan::new();
@@ -22,7 +22,7 @@ pub fn send_msg(msg: &str) -> Result<(), &str> {
                     .filter(|&name| name == DEVICE_NAME)
                     .map(|_| *device)
             })
-            .await?
+            .await.unwrap()
             .ok_or("Device not found")?;
         
         let mut client = ble_device.new_client();
@@ -31,6 +31,9 @@ pub fn send_msg(msg: &str) -> Result<(), &str> {
         let characteristic = service.get_characteristic(uuid128!(MSG_CHAR_UUID)).await.unwrap();
 
         characteristic.write_value(msg.as_bytes(), true).await.unwrap();
+
+        delay::Delay::delay_ms(&delay, 10000);
+        client.disconnect().unwrap();
 
         Ok(())
     })

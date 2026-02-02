@@ -242,7 +242,7 @@ fn main() {
                     let text = value.getText().to_string();
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
-                    if let Err(e) = ble::send_command(text.as_str()) {
+                    if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                         eprintln!("BLE error: {}", e);
                     }
                     text
