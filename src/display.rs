@@ -1,26 +1,28 @@
-use esp_idf_hal::{
-    delay::{Delay, Ets},
-    gpio::*,
-    prelude::*,
-    spi::*,
-    units::FromValueType,
-};
 
-use embedded_graphics::{
-    image::ImageRaw, 
-    pixelcolor::Rgb565, 
-    prelude::*,
-};
-use mipidsi::
-{
-    models::GC9A01, 
-    Builder,
-};
 
 pub mod lcd_display {
+    use esp_idf_hal::{
+        delay::{Delay, Ets},
+        gpio::*,
+        prelude::*,
+        spi::*,
+        units::FromValueType,
+    };
+
+    use embedded_graphics::{
+        image::ImageRaw, 
+        pixelcolor::Rgb565, 
+        prelude::*,
+    };
+    use mipidsi::
+    {
+        models::GC9A01, 
+        Builder,
+    };
+    use embedded_graphics::image::ImageDrawable;
     use esp_idf_hal::{gpio::PinDriver, peripherals, spi::SpiDeviceDriver};
 
-    fn display(peripherals: &peripherals::Peripherals, buffer: vec<u8>) {
+    fn display(peripherals: &peripherals::Peripherals, buffer: &[u8], img_width: u32) {
         let cs = peripherals.pins.gpio2; // D1 on xiao
         let rst = peripherals.pins.gpio3; // D2 on xiao
         let dc = peripherals.pins.gpio4; // D3 on xiao
@@ -31,25 +33,26 @@ pub mod lcd_display {
             peripherals.spi2, 
             sclk, 
             sdo, 
-            sdi, 
+            None, 
             Some(cs), 
-            bus_config, 
-            config
+            &SpiConfigConfig::new(),
+            &SpiConfig::new().baudrate(40.MHz().into()),
         ).unwrap();
 
         let dc = PinDriver::output(dc).unwrap();
         let rst = PinDriver::output(rst).unwrap();
 
-        let mut spi_buf: [u8; 4096] = [0; 4096];
-        let di = mipidsi::inteface::SpiInterface::new(spi, dc, &mut spi_buf);
+        let mut spi_buffer: [u8; 4096] = [0; 4096];
+        let di = mipidsi::interface::SpiInterface::new(spi, dc, &mut spi_buffer);
 
         let mut display = Builder::new(GC9A01, di)
             .reset_pin(rst)
             .init(&mut Ets)
             .unwrap();
 
+        let _image = embedded_graphics::image::ImageRaw::<embedded_graphics::pixelcolor::Rgb565>::new(buffer, img_width)
+            .draw(&mut display);
         
-
         
     }
     
