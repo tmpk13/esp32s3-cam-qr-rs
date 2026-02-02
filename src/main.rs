@@ -60,32 +60,31 @@ macro_rules! blink {
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
 fn grey_to_565(greyscale: &[u8]) -> Vec<u8> {
     let mut bytes: Vec<u8> = Vec::with_capacity(greyscale.len() * 2);
-    for &grey in greyscale
-        {
-            let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
-            let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
-            let b = (grey >> 3) as u16; // 8 - 3 : 5 bits
-            let rgb_565 = (r << 11) | (g << 5) | b;
-            // u8 in xxxx xxxx
-            // r = 3 >> : 000x xxxx (5 remain)
-            // g = 3 >> : 00xx xxxx (6 remain)
-            // b = 3 >> : 000x xxxx (5 remain)
-            // *Losing the bottom 2-3 bits (integers 0-8)*
-            //
-            //  << 11   << 5  << 0
-            //     \/     \/    \/
-            // xxxxx 000000 00000 r
-            // 00000 xxxxxx 00000 g
-            // 00000 000000 xxxxx b
-            //
-            // | (Or) combines. Each value is shifted. All zeros for the others for a given section
+    for &grey in greyscale {
+        let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
+        let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
+        let b = (grey >> 3) as u16; // 8 - 3 : 5 bits
+        let rgb_565 = (r << 11) | (g << 5) | b;
+        // u8 in xxxx xxxx
+        // r = 3 >> : 000x xxxx (5 remain)
+        // g = 3 >> : 00xx xxxx (6 remain)
+        // b = 3 >> : 000x xxxx (5 remain)
+        // *Losing the bottom 2-3 bits (integers 0-8)*
+        //
+        //  << 11   << 5  << 0
+        //     \/     \/    \/
+        // xxxxx 000000 00000 r
+        // 00000 xxxxxx 00000 g
+        // 00000 000000 xxxxx b
+        //
+        // | (Or) combines. Each value is shifted. All zeros for the others for a given section
 
-            // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
-            // To litte endian bytes --> [u8; 2]
-            // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
-            bytes.extend_from_slice(&rgb_565.to_le_bytes());
-        }
-        bytes
+        // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
+        // To litte endian bytes --> [u8; 2]
+        // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
+        bytes.extend_from_slice(&rgb_565.to_le_bytes());
+    }
+    bytes
 }
 
 fn main() {
@@ -204,15 +203,28 @@ fn main() {
         camera.get_framebuffer().map(|fb| fb.data().to_vec())
     }
 
-    // Using frame buffer search for a qrcode
-    fn detect(camera: &esp_camera_rs::Camera) -> Result<String, String> {
-        // Get frame buffer from camera
-        let frame_buffer;
+    // If loop feature is enabled attempt to detect every interval
+    loop {
+        // Loop every 3s and detect
 
-        match get_framebuffer(camera) {
-            Some(fb) => frame_buffer = fb,
-            None => return Err("timeout".to_string()),
+        let mut qr_string: String;
+
+        let frame_buffer = match get_framebuffer(&camera) {
+            Some(fb) => {
+                log::debug!("Frame captured");
+                fb
+            }
+            None => {
+                log::error!("Timeout");
+                continue;
+            }
         };
+
+        let fb_565 = grey_to_565(&frame_buffer);
+        let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
+        Image::new(&image, Point::zero())
+            .draw(&mut display)
+            .unwrap();
 
         // Attempt to detect/decode QR from framebuffer
         let qrcode = rxing::helpers::detect_in_luma(
@@ -223,47 +235,22 @@ fn main() {
         );
 
         // Handel successful detection and no qrcode found cases
-        match qrcode {
-            Ok(c) => Ok(c.getText().to_string()),
-            Err(e) => {
-                log::info!("No qrcode found: {}", e);
-                Err("No QR found".to_string())
+        qr_string = match qrcode {
+            Ok(value) => {
+                let text = value.getText().to_string();
+                blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
+                log::debug!("No qrcode found: {}", text);
+                text
             }
-        }
-    }
-
-    // If loop feature is enabled attempt to detect every interval
-    loop {
-        // Loop every 3s and detect
-        {
-            match get_framebuffer(&camera) {
-                Some(fb) => {
-                    let fb_565 = grey_to_565(&fb);
-                    let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
-                    Image::new(&image, Point::zero())
-                        .draw(&mut display)
-                        .unwrap();
-                }
-                None => {
-                    log::error!("Camera failed no framebuffer received");
-                }
-            };
-
-            // Blink quickly when code detected, once for scan
-            match detect(&camera) {
-                Ok(s) => {
-                    log::debug!("QR detect success: \x1b[0;34m{}\x1b[0m", s);
-                    blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
-                }
-                Err(e) => {
-                    log::error!("QR detect failed: {}", e);
-                    blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
-                }
+            Err(err) => {
+                blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
+                log::error!("No qrcode found: {}", err);
+                "".to_string()
             }
+        };
 
-            // Wait for detection again
-            Delay::delay_ms(&Delay::default(), DETECT_INTERVAL_MS);
-        }
+        // Wait for detection again
+        Delay::delay_ms(&Delay::default(), DETECT_INTERVAL_MS);
 
         // Set looped to true
         if !cfg!(feature = "loop") {

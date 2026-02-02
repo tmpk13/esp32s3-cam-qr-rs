@@ -215,3 +215,5 @@ Fixed by reducing display spi speed to `20MHz`. *(Doubt this was needed)*
 Add greyscale to 565 u8 x2
 
 ## Now that using a greyscale image should stop inverting 
+
+## Timing out after first capture
