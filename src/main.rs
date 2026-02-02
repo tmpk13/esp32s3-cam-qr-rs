@@ -9,6 +9,8 @@ On the Xiao esp32s3 sense w/ camera
 
 // use esp32_nimble::BLEDevice;
 
+mod ble;
+
 use embedded_graphics::{
     draw_target::DrawTarget,
     image::Image,
@@ -240,6 +242,9 @@ fn main() {
                     let text = value.getText().to_string();
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
+                    if let Err(e) = ble::send_command(text.as_str()) {
+                        eprintln!("BLE error: {}", e);
+                    }
                     text
                 }
                 Err(err) => {
