@@ -189,3 +189,8 @@ Because this function may panic, its use is generally discouraged. Instead, pref
 *Error Found:* no target, linker
 Added `rust-toolchain.toml` to repo
 Added `build.rs` to repo
+
+# Display
+
+## Wrong color on output
+Need to invert and swap color order for Gc9a01

@@ -83,12 +83,12 @@ fn main() {
     let di = mipidsi::interface::SpiInterface::new(spi, dc, &mut spi_buffer);
 
     let mut display = Builder::new(GC9A01, di)
+        .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        .color_order(mipidsi::options::ColorOrder::Bgr)
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
 
-    // let _image = ImageRaw::<Rgb565>::new(&[u8], FRAME_WIDTH)
-    //     .draw(&mut display);
     display.clear(Rgb565::RED).unwrap();
 
 
@@ -204,7 +204,12 @@ fn main() {
         // Detect once and exit
         match detect(&camera) {
             true => { blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT); }
-            false => { blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT); }
+            false => { 
+                blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT); 
+                    let _image = ImageRaw::<Rgb565>::new(camera.get_framebuffer().unwrap().data(), FRAME_WIDTH)
+                        .draw(&mut display); 
+
+            }
         }
     }
 }
