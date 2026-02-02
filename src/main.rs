@@ -7,6 +7,8 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
+
+
 use embedded_graphics::{
     draw_target::DrawTarget,
     image::Image,
@@ -98,20 +100,15 @@ fn main() {
 
     // Blink led with specified frequency and repetition count
     fn blink_led(led: &mut PinDriver<'_, Gpio21, Output>, delay_ms: u32, repeat_count: u8) {
-        let mut blink_count = repeat_count;
         // Blink set number of times
-        while blink_count > 0 {
+        for _ in 0..repeat_count {
             // Blink led on and off
             // Set low to turn on
             let _ = led.set_low();
             Delay::delay_ms(&Delay::default(), delay_ms);
             // Set high to turn off
             let _ = led.set_high();
-            if repeat_count > 1 {
-                Delay::delay_ms(&Delay::default(), delay_ms);
-            }
-
-            blink_count -= 1;
+            Delay::delay_ms(&Delay::default(), delay_ms);
         }
     }
 
