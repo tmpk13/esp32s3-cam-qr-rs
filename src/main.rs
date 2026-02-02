@@ -9,7 +9,6 @@ On the Xiao esp32s3 sense w/ camera
 
 // use esp32_nimble::BLEDevice;
 
-
 use embedded_graphics::{
     draw_target::DrawTarget,
     image::Image,
@@ -28,8 +27,6 @@ use esp_idf_hal::{
     units::FromValueType,
 };
 use mipidsi::{models::GC9A01, Builder};
-
-
 
 // Blink count and frequency for signaling a scan
 const QR_SCAN_LED_BLINK_COUNT: u8 = 1;
@@ -64,7 +61,7 @@ macro_rules! blink {
 
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
 fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
-   fb_565.reserve(greyscale.len() * 2);
+    fb_565.reserve(greyscale.len() * 2);
     for &grey in greyscale {
         let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
         let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
@@ -99,7 +96,6 @@ fn main() {
 
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
-
 
     // Get esp32s3 peripherals
     let peripherals = Peripherals::take().unwrap();
@@ -209,7 +205,6 @@ fn main() {
         // Loop every interval and detect
 
         let qr_string = {
-
             let frame_buffer = match camera.get_framebuffer() {
                 Some(fb) => {
                     log::debug!("Frame captured");
@@ -222,15 +217,10 @@ fn main() {
                 }
             };
 
-            
             let fb_data = frame_buffer.data().to_vec();
-            
-            
 
             fb_565.clear();
             grey_to_565(&fb_data, &mut fb_565);
-            
-            
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
@@ -239,8 +229,6 @@ fn main() {
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
-
-            
 
             let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
             Image::new(&image, Point::zero())
@@ -271,7 +259,5 @@ fn main() {
         if !cfg!(feature = "loop") {
             break;
         }
-
-        
     }
 }
