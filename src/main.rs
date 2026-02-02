@@ -9,7 +9,7 @@ On the Xiao esp32s3 sense w/ camera
 
 use embedded_graphics::{
     image::ImageRaw, 
-    pixelcolor::Rgb565, 
+    pixelcolor::Rgb565, prelude::RgbColor, 
 };
 use mipidsi::
 {
@@ -17,7 +17,7 @@ use mipidsi::
     Builder,
 };
 use embedded_graphics::image::ImageDrawable;
-
+use embedded_graphics::draw_target::DrawTarget;
 use esp_idf_hal::{
     spi::{SpiDeviceDriver, SpiDriverConfig, SpiConfig},
     gpio::{Output, PinDriver, Gpio21},
@@ -89,6 +89,7 @@ fn main() {
 
     // let _image = ImageRaw::<Rgb565>::new(&[u8], FRAME_WIDTH)
     //     .draw(&mut display);
+    display.clear(Rgb565::RED).unwrap();
 
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
