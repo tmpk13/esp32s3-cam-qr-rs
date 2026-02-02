@@ -83,7 +83,6 @@ fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
         // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
         // To litte endian bytes --> [u8; 2]
         // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
-        Rgb565::new(grey, grey, grey);
         fb_565.extend_from_slice(&rgb_565.to_le_bytes());
     }
 }
