@@ -7,6 +7,8 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
+use esp_idf_svc::{  };
+
 use embedded_graphics::{
     draw_target::DrawTarget,
     image::Image,
@@ -59,8 +61,8 @@ macro_rules! blink {
 }
 
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
-fn grey_to_565(greyscale: &[u8]) -> Vec<u8> {
-    let mut bytes: Vec<u8> = Vec::with_capacity(greyscale.len() * 2);
+fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
+   fb_565.reserve(greyscale.len() * 2);
     for &grey in greyscale {
         let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
         let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
@@ -83,9 +85,8 @@ fn grey_to_565(greyscale: &[u8]) -> Vec<u8> {
         // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
         // To litte endian bytes --> [u8; 2]
         // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
-        bytes.extend_from_slice(&rgb_565.to_le_bytes());
+        fb_565.extend_from_slice(&rgb_565.to_le_bytes());
     }
-    bytes
 }
 
 fn main() {
@@ -126,7 +127,7 @@ fn main() {
 
     // Display definition, invert and order colors for GC9A01
     let mut display = Builder::new(GC9A01, di)
-        // .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        .invert_colors(mipidsi::options::ColorInversion::Inverted)
         // .color_order(mipidsi::options::ColorOrder::Bgr)
         .reset_pin(rst)
         .init(&mut Ets)
@@ -199,10 +200,8 @@ fn main() {
     )
     .unwrap();
 
-    
-    
-
     // If loop feature is enabled attempt to detect every interval
+    let mut fb_565 = Vec::with_capacity((FRAME_WIDTH * FRAME_HEIGHT * 2) as usize);
     loop {
         // Loop every 3s and detect
 
@@ -218,11 +217,9 @@ fn main() {
                 }
             };
 
-            let fb_565 = grey_to_565(&frame_buffer.data());
-            let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
-            Image::new(&image, Point::zero())
-                .draw(&mut display)
-                .unwrap();
+            fb_565.clear();
+            grey_to_565(&frame_buffer.data(), &mut fb_565);
+            
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
@@ -231,6 +228,13 @@ fn main() {
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
+
+            drop(frame_buffer);
+
+            let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
+            Image::new(&image, Point::zero())
+                .draw(&mut display)
+                .unwrap();
 
             // Handel successful detection and no qrcode found cases
             match qrcode {
@@ -246,7 +250,7 @@ fn main() {
                     log::error!("No qrcode found: {}", err);
                     "".to_string()
                 }
-            };
+            }
         };
 
         // Wait for detection again

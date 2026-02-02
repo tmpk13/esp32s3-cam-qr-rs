@@ -223,4 +223,6 @@ Probably not getting rid of the old frames
 *Life time issue?*
 https://doc.rust-lang.org/rust-by-example/scope/lifetime/explicit.html
 
-Remove wrapper and add
+Remove wrapper: did not fix it
+Drop framebuffer : did not work
+Reuse buffer
