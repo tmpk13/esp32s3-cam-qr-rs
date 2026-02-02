@@ -225,4 +225,8 @@ https://doc.rust-lang.org/rust-by-example/scope/lifetime/explicit.html
 
 Remove wrapper: did not fix it
 Drop framebuffer : did not work
-Reuse buffer
+Reuse buffer : did not work
+
+Need to update esp-camera-rs to return buffer:
+https://github.com/espressif/esp32-camera/blob/fb7b85b2b79fb039551c67d295e884d2b1eb907b/driver/esp_camera.c#L404
+https://components.espressif.com/components/espressif/esp32-camera/versions/2.1.4/readme
