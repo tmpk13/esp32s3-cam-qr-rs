@@ -125,13 +125,13 @@ fn main() {
 
     // Display definition, invert and order colors for GC9A01
     let mut display = Builder::new(GC9A01, di)
-        .invert_colors(mipidsi::options::ColorInversion::Inverted)
-        .color_order(mipidsi::options::ColorOrder::Bgr)
+        // .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        // .color_order(mipidsi::options::ColorOrder::Bgr)
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
 
-    display.clear(Rgb565::WHITE).unwrap();
+    // display.clear(Rgb565::WHITE).unwrap();
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
@@ -193,7 +193,7 @@ fn main() {
         esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
         FRAMESIZE,                          // 240x240 frame size
         12,                                 // JPEG Quality
-        2,                                  // Frame buffer count
+        3,                                  // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_LATEST,  // Grab mode: latest
     )
     .unwrap();
@@ -207,45 +207,47 @@ fn main() {
     loop {
         // Loop every 3s and detect
 
+        let qr_string = {
+            let frame_buffer = match get_framebuffer(&camera) {
+                Some(fb) => {
+                    log::debug!("Frame captured");
+                    fb
+                }
+                None => {
+                    log::error!("Timeout");
+                    continue;
+                }
+            };
 
-        let frame_buffer = match get_framebuffer(&camera) {
-            Some(fb) => {
-                log::debug!("Frame captured");
-                fb
-            }
-            None => {
-                log::error!("Timeout");
-                continue;
-            }
-        };
+            let fb_565 = grey_to_565(&frame_buffer);
+            let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
+            Image::new(&image, Point::zero())
+                .draw(&mut display)
+                .unwrap();
 
-        let fb_565 = grey_to_565(&frame_buffer);
-        let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
-        Image::new(&image, Point::zero())
-            .draw(&mut display)
-            .unwrap();
+            // Attempt to detect/decode QR from framebuffer
+            let qrcode = rxing::helpers::detect_in_luma(
+                frame_buffer,
+                FRAME_WIDTH,
+                FRAME_HEIGHT,
+                Some(rxing::BarcodeFormat::QR_CODE),
+            );
 
-        // Attempt to detect/decode QR from framebuffer
-        let qrcode = rxing::helpers::detect_in_luma(
-            frame_buffer,
-            FRAME_WIDTH,
-            FRAME_HEIGHT,
-            Some(rxing::BarcodeFormat::QR_CODE),
-        );
+            // Handel successful detection and no qrcode found cases
+            match qrcode {
+                Ok(value) => {
+                    let text = value.getText().to_string();
+                    blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
+                    log::debug!("Qrcode found: --> {}", text);
+                    text
+                }
+                Err(err) => {
+                    blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
 
-        // Handel successful detection and no qrcode found cases
-        let mut qr_string = match qrcode {
-            Ok(value) => {
-                let text = value.getText().to_string();
-                blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
-                log::debug!("No qrcode found: {}", text);
-                text
-            }
-            Err(err) => {
-                blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
-                log::error!("No qrcode found: {}", err);
-                "".to_string()
-            }
+                    log::error!("No qrcode found: {}", err);
+                    "".to_string()
+                }
+            };
         };
 
         // Wait for detection again
