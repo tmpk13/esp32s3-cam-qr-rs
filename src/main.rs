@@ -164,10 +164,18 @@ fn main() {
     .unwrap();
 
 
+    fn get_framebuffer(camera: &esp_camera_rs::Camera) -> Option<Vec<u8>> {
+        let frame_buffer = camera.get_framebuffer()?;
+        Some(frame_buffer.data().to_vec())
+    }
+
     // Using frame buffer search for a qrcode
     fn detect(camera: &esp_camera_rs::Camera) -> bool {
         // Get frame buffer from camera
-        let frame_buffer = camera.get_framebuffer().unwrap();
+        let frame_buffer = match get_framebuffer(camera) {
+            Some(fb) => fb,
+            None => 
+        };
 
         // Attempt to detect/decode QR from framebuffer
         let qrcode = rxing::helpers::detect_in_luma(
