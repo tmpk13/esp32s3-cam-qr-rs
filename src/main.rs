@@ -239,7 +239,7 @@ fn main() {
                 Ok(value) => {
                     let text = value.getText().to_string();
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
-                    log::debug!("Qrcode found: --> {}", text);
+                    log::info!("Qrcode found: --> {}", text);
                     text
                 }
                 Err(err) => {
