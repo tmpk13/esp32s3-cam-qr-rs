@@ -7,7 +7,8 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
-use esp_idf_svc::{  };
+// use esp32_nimble::BLEDevice;
+
 
 use embedded_graphics::{
     draw_target::DrawTarget,
@@ -17,7 +18,6 @@ use embedded_graphics::{
     {image::ImageRaw, pixelcolor::Rgb565, prelude::RgbColor},
 };
 
-use esp_camera_rs::FrameBuffer;
 use esp_idf_hal::{
     delay::Delay,
     delay::Ets,
@@ -29,6 +29,8 @@ use esp_idf_hal::{
 };
 use mipidsi::{models::GC9A01, Builder};
 
+
+
 // Blink count and frequency for signaling a scan
 const QR_SCAN_LED_BLINK_COUNT: u8 = 1;
 const QR_SCAN_LED_DELAY_MS: u32 = 500;
@@ -38,7 +40,7 @@ const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
 const QR_FOUND_LED_DELAY_MS: u32 = 50;
 
 // QR code scanning delay
-const DETECT_INTERVAL_SECONDS: u32 = 3;
+const DETECT_INTERVAL_SECONDS: u32 = 1;
 
 const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
 
@@ -98,6 +100,7 @@ fn main() {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+
     // Get esp32s3 peripherals
     let peripherals = Peripherals::take().unwrap();
 
@@ -115,7 +118,7 @@ fn main() {
         None::<AnyIOPin>,
         Some(cs),
         &SpiDriverConfig::new(),
-        &SpiConfig::new().baudrate(40.MHz().into()),
+        &SpiConfig::new().baudrate(60.MHz().into()),
     )
     .unwrap();
 
@@ -127,8 +130,8 @@ fn main() {
 
     // Display definition, invert and order colors for GC9A01
     let mut display = Builder::new(GC9A01, di)
-        .invert_colors(mipidsi::options::ColorInversion::Inverted)
-        // .color_order(mipidsi::options::ColorOrder::Bgr)
+        // .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        .color_order(mipidsi::options::ColorOrder::Bgr)
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
@@ -203,9 +206,10 @@ fn main() {
     // If loop feature is enabled attempt to detect every interval
     let mut fb_565 = Vec::with_capacity((FRAME_WIDTH * FRAME_HEIGHT * 2) as usize);
     loop {
-        // Loop every 3s and detect
+        // Loop every interval and detect
 
         let qr_string = {
+
             let frame_buffer = match camera.get_framebuffer() {
                 Some(fb) => {
                     log::debug!("Frame captured");
@@ -213,23 +217,30 @@ fn main() {
                 }
                 None => {
                     log::error!("Timeout");
-                    continue;
+
+                    esp_idf_hal::reset::restart();
                 }
             };
 
+            
+            let fb_data = frame_buffer.data().to_vec();
+            
+            
+
             fb_565.clear();
-            grey_to_565(&frame_buffer.data(), &mut fb_565);
+            grey_to_565(&fb_data, &mut fb_565);
+            
             
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
-                frame_buffer.data().to_vec(),
+                fb_data,
                 FRAME_WIDTH,
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
 
-            drop(frame_buffer);
+            
 
             let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
             Image::new(&image, Point::zero())
@@ -260,5 +271,7 @@ fn main() {
         if !cfg!(feature = "loop") {
             break;
         }
+
+        
     }
 }
