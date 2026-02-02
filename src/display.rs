@@ -2,17 +2,12 @@
 
 pub mod lcd_display {
     use esp_idf_hal::{
-        delay::{Delay, Ets},
-        gpio::*,
-        prelude::*,
-        spi::*,
-        units::FromValueType,
+        delay::Ets, gpio::AnyIOPin, spi::*, units::FromValueType
     };
 
     use embedded_graphics::{
         image::ImageRaw, 
         pixelcolor::Rgb565, 
-        prelude::*,
     };
     use mipidsi::
     {
@@ -22,20 +17,15 @@ pub mod lcd_display {
     use embedded_graphics::image::ImageDrawable;
     use esp_idf_hal::{gpio::PinDriver, peripherals, spi::SpiDeviceDriver};
 
-    fn display(peripherals: &peripherals::Peripherals, buffer: &[u8], img_width: u32) {
-        let cs = peripherals.pins.gpio2; // D1 on xiao
-        let rst = peripherals.pins.gpio3; // D2 on xiao
-        let dc = peripherals.pins.gpio4; // D3 on xiao
-        let sclk = peripherals.pins.gpio7; // D8 on xiao
-        let sdo = peripherals.pins.gpio9; // D10 on xiao
-
+    pub fn display(spi2: AnyIOPin, sclk, sdo, cs, dc, rst, buffer: &[u8], img_width: u32) {
+        
         let spi = SpiDeviceDriver::new_single(
-            peripherals.spi2, 
+            spi2, 
             sclk, 
             sdo, 
-            None, 
+            None::<AnyIOPin>, 
             Some(cs), 
-            &SpiConfigConfig::new(),
+            &SpiDriverConfig::new(),
             &SpiConfig::new().baudrate(40.MHz().into()),
         ).unwrap();
 
@@ -50,7 +40,7 @@ pub mod lcd_display {
             .init(&mut Ets)
             .unwrap();
 
-        let _image = embedded_graphics::image::ImageRaw::<embedded_graphics::pixelcolor::Rgb565>::new(buffer, img_width)
+        let _image = ImageRaw::<Rgb565>::new(buffer, img_width)
             .draw(&mut display);
         
         

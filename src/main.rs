@@ -7,13 +7,23 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
-mod display;
-use display::lcd_display;
+use embedded_graphics::{
+    image::ImageRaw, 
+    pixelcolor::Rgb565, 
+};
+use mipidsi::
+{
+    models::GC9A01, 
+    Builder,
+};
+use embedded_graphics::image::ImageDrawable;
 
 use esp_idf_hal::{
-    gpio, gpio::{Output, PinDriver}, 
+    spi::{SpiDeviceDriver, SpiDriverConfig, SpiConfig},
+    gpio::{Output, PinDriver, Gpio21},
     delay::Delay, 
-    peripherals::Peripherals
+    peripherals::Peripherals,
+    delay::Ets, gpio::AnyIOPin, units::FromValueType
 };
 
 // Blink count and frequency for signaling a scan
@@ -50,8 +60,35 @@ fn main() {
     // Get esp32s3 peripherals
     let peripherals = Peripherals::take().unwrap();
 
+    let cs = peripherals.pins.gpio2; // D1 on xiao
+    let rst = peripherals.pins.gpio3; // D2 on xiao
+    let dc = peripherals.pins.gpio4; // D3 on xiao
+    let sclk = peripherals.pins.gpio7; // D8 on xiao
+    let sdo = peripherals.pins.gpio9; // D10 on xiao
 
+    let spi = SpiDeviceDriver::new_single(
+        peripherals.spi2, 
+        sclk, 
+        sdo, 
+        None::<AnyIOPin>, 
+        Some(cs), 
+        &SpiDriverConfig::new(),
+        &SpiConfig::new().baudrate(40.MHz().into()),
+    ).unwrap();
 
+    let dc = PinDriver::output(dc).unwrap();
+    let rst = PinDriver::output(rst).unwrap();
+
+    let mut spi_buffer: [u8; 4096] = [0; 4096];
+    let di = mipidsi::interface::SpiInterface::new(spi, dc, &mut spi_buffer);
+
+    let mut display = Builder::new(GC9A01, di)
+        .reset_pin(rst)
+        .init(&mut Ets)
+        .unwrap();
+
+    // let _image = ImageRaw::<Rgb565>::new(&[u8], FRAME_WIDTH)
+    //     .draw(&mut display);
 
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
@@ -59,7 +96,7 @@ fn main() {
     let _ = led.set_high();
 
     // Blink led with specified frequency and repetition count
-    fn blink_led(led: &mut  PinDriver<'_, gpio::Gpio21, Output>, delay_ms: u32, repeat_count:u8) {
+    fn blink_led(led: &mut  PinDriver<'_, Gpio21, Output>, delay_ms: u32, repeat_count:u8) {
         let mut blink_count = repeat_count;
         // Blink set number of times
         while blink_count > 0 {
