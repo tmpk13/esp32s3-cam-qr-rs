@@ -7,9 +7,14 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
-use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::image::Image;
-use embedded_graphics::{image::ImageRaw, pixelcolor::Rgb565, prelude::RgbColor};
+use embedded_graphics::{
+    draw_target::DrawTarget,
+    image::Image,
+    prelude::Point,
+    Drawable,
+    {image::ImageRaw, pixelcolor::Rgb565, prelude::RgbColor},
+};
+
 use esp_idf_hal::{
     delay::Delay,
     delay::Ets,
@@ -152,8 +157,8 @@ fn main() {
         esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
         FRAMESIZE,                          // 240x240 frame size
         12,                                 // JPEG Quality
-        1,                                  // Frame buffer count
-        esp_camera_rs::CAMERA_GRAB_WHEN_EMPTY, // Grab mode: when empty
+        2,                                  // Frame buffer count
+        esp_camera_rs::CAMERA_GRAB_LATEST,  // Grab mode: latest
     )
     .unwrap();
 
@@ -194,13 +199,16 @@ fn main() {
     loop {
         // Loop every 3s and detect
         {
-            
             match get_framebuffer(&camera) {
-                Some(fb) => { 
-                    let image = ImageRaw::<Rgb565>::new(&fb, FRAME_WIDTH); 
-                    Image::new(&image, Default::default());
+                Some(fb) => {
+                    let image = ImageRaw::<Rgb565>::new(&fb, FRAME_WIDTH);
+                    Image::new(&image, Point::zero())
+                        .draw(&mut display)
+                        .unwrap();
                 }
-                None => { log::error!("Camera failed no framebuffer received");  }
+                None => {
+                    log::error!("Camera failed no framebuffer received");
+                }
             };
 
             // Blink quickly when code detected, once for scan

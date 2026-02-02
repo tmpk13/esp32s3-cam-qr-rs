@@ -201,3 +201,12 @@ Most likely camera and lcd together using more than reserved
 Present size: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000`  
 Trying: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=16000`  
 #### [!] Should find a better solution
+
+## Frame buffer timing out
+Fixed by reducing display spi speed to `20MHz`. *(Doubt this was needed)*
+
+
+
+**What probably did it was changing the camera buffer count from `1` to `2`.**
+
+## Image not in greyscale
