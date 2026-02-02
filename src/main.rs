@@ -7,8 +7,6 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
-
-
 use embedded_graphics::{
     draw_target::DrawTarget,
     image::Image,
@@ -47,6 +45,40 @@ const DETECT_INTERVAL_MS: u32 = DETECT_INTERVAL_SECONDS * 1000;
 const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
+
+macro_rules! blink {
+    ($pin: expr, $times: expr, $delay:tt ms) => {{
+        for _ in 0..$times {
+            let _ = led.set_low();
+            Delay::delay_ms(&Delay::default(), delay_ms);
+            let _ = led.set_high();
+            Delay::delay_ms(&Delay::default(), delay_ms);
+        }
+    }};
+}
+
+// Convert a greyscale (Vec<u8>) image to a 565 (Vec<u16>) Image
+fn grey_to_565(greyscale: Vec<u8>) -> Vec<u16> {
+    greyscale
+        .iter()
+        .map(|&grey| {
+            let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
+            let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
+            let b = (grey >> 3) as u16; // 8 - 3 : 5 bits
+            (r << 11) | (g << 5) | b
+            // u8 in xxxx xxxx
+            // r = 3 >> : 000x xxxx (5 remain)
+            // g = 3 >> : 00xx xxxx (6 remain)
+            // b = 3 >> : 000x xxxx (5 remain)
+            // *Losing the bottom 2-3 bits (integers 0-8)*
+            //
+            //  << 11   << 5  << 0
+            //     \/     \/    \/
+            // 00000 000000 00000
+            // | (Or) combines. Each value is shifted. All zeros for the others for a given section
+        })
+        .collect()
+}
 
 fn main() {
     // Esp-idf setup
