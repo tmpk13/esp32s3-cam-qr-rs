@@ -57,15 +57,15 @@ macro_rules! blink {
     }};
 }
 
-// Convert a greyscale (Vec<u8>) image to a 565 (Vec<u16>) Image
-fn grey_to_565(greyscale: Vec<u8>) -> Vec<u16> {
-    greyscale
-        .iter()
-        .map(|&grey| {
+// Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
+fn grey_to_565(greyscale: &[u8]) -> Vec<u8> {
+    let mut bytes: Vec<u8> = Vec::with_capacity(greyscale.len() * 2);
+    for &grey in greyscale
+        {
             let r = (grey >> 3) as u16; // 8 - 3 : 5 bits
             let g = (grey >> 2) as u16; // 8 - 2 : 6 bits
             let b = (grey >> 3) as u16; // 8 - 3 : 5 bits
-            (r << 11) | (g << 5) | b
+            let rgb_565 = (r << 11) | (g << 5) | b;
             // u8 in xxxx xxxx
             // r = 3 >> : 000x xxxx (5 remain)
             // g = 3 >> : 00xx xxxx (6 remain)
@@ -74,10 +74,18 @@ fn grey_to_565(greyscale: Vec<u8>) -> Vec<u16> {
             //
             //  << 11   << 5  << 0
             //     \/     \/    \/
-            // 00000 000000 00000
+            // xxxxx 000000 00000 r
+            // 00000 xxxxxx 00000 g
+            // 00000 000000 xxxxx b
+            //
             // | (Or) combines. Each value is shifted. All zeros for the others for a given section
-        })
-        .collect()
+
+            // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
+            // To litte endian bytes --> [u8; 2]
+            // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
+            bytes.extend_from_slice(&rgb_565.to_le_bytes());
+        }
+        bytes
 }
 
 fn main() {
@@ -230,7 +238,8 @@ fn main() {
         {
             match get_framebuffer(&camera) {
                 Some(fb) => {
-                    let image = ImageRaw::<Rgb565>::new(&fb, FRAME_WIDTH);
+                    let fb_565 = grey_to_565(&fb);
+                    let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
                     Image::new(&image, Point::zero())
                         .draw(&mut display)
                         .unwrap();
