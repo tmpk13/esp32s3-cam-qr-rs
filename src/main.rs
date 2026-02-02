@@ -7,6 +7,9 @@ On the Xiao esp32s3 sense w/ camera
 
 */
 
+mod display;
+use display::lcd_display;
+
 use esp_idf_hal::{
     gpio, gpio::{Output, PinDriver}, 
     delay::Delay, 
@@ -46,6 +49,10 @@ fn main() {
 
     // Get esp32s3 peripherals
     let peripherals = Peripherals::take().unwrap();
+
+
+
+
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
@@ -89,8 +96,8 @@ fn main() {
     */
     // Setup xiao esp32s3 pins for camera
     let camera = esp_camera_rs::Camera::new(
-        peripherals.pins.gpio1,  // Unused
-        peripherals.pins.gpio2,  // Unused
+        peripherals.pins.gpio6,  // Unused
+        peripherals.pins.gpio5,  // Unused
         peripherals.pins.gpio10, // gpio10 "Camera related clock pin"
         peripherals.pins.gpio15, // gpio15 pin_d0 Y2
         peripherals.pins.gpio17, // gpio17 pin_d1 Y3
