@@ -194,3 +194,10 @@ Added `build.rs` to repo
 
 ## Wrong color on output
 Need to invert and swap color order for Gc9a01
+
+## Stack overflow
+When adding the display to the camera receiving error about stack overflow  
+Most likely camera and lcd together using more than reserved  
+Present size: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=8000`  
+Trying: `CONFIG_ESP_MAIN_TASK_STACK_SIZE=16000`  
+#### [!] Should find a better solution
