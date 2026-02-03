@@ -7,7 +7,7 @@ const SERVICE_UUID: &str = "921a6069-4357-4287-a9af-fd386fc0dcad";
 const MSG_CHAR_UUID: &str = "1ad4aa0c-5cb7-4be3-9916-9c63f19c03fd";
 const DEVICE_NAME: &str = "esp-msg";
 
-pub fn send_command(msg: &str, delay: &esp_idf_hal::delay::Delay) -> Result<(), String> {
+pub fn send_command(msg: &str, delay: &esp_idf_hal::delay::Delay) -> Result<(), Box<dyn std::error::Error>> {
     block_on(async{
         let ble_device = BLEDevice::take();
         let mut ble_scan = BLEScan::new();
@@ -22,18 +22,18 @@ pub fn send_command(msg: &str, delay: &esp_idf_hal::delay::Delay) -> Result<(), 
                     .filter(|&name| name == DEVICE_NAME)
                     .map(|_| *device)
             })
-            .await.unwrap()
+            .await?
             .ok_or("Device not found")?;
         
         let mut client = ble_device.new_client();
-        client.connect(&device.addr()).await.unwrap();
-        let service = client.get_service(uuid128!(SERVICE_UUID)).await.unwrap();
-        let characteristic = service.get_characteristic(uuid128!(MSG_CHAR_UUID)).await.unwrap();
+        client.connect(&device.addr()).await?;
+        let service = client.get_service(uuid128!(SERVICE_UUID)).await?;
+        let characteristic = service.get_characteristic(uuid128!(MSG_CHAR_UUID)).await?;
 
-        characteristic.write_value(msg.as_bytes(), true).await.unwrap();
+        characteristic.write_value(msg.as_bytes(), true).await?;
 
-        delay::Delay::delay_ms(&delay, 10000);
-        client.disconnect().unwrap();
+        delay::Delay::delay_ms(&delay, 5000);
+        client.disconnect()?;
 
         Ok(())
     })

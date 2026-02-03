@@ -16,8 +16,10 @@ use embedded_graphics::{
     image::Image,
     prelude::Point,
     Drawable,
-    {image::ImageRaw, pixelcolor::Rgb565, prelude::RgbColor},
+    {image::ImageRaw, pixelcolor::Rgb565},
 };
+
+use esp_idf_svc::hal::gpio::OutputPin;
 
 use esp_idf_hal::{
     delay::Delay,
@@ -39,7 +41,7 @@ const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
 const QR_FOUND_LED_DELAY_MS: u32 = 50;
 
 // QR code scanning delay
-const DETECT_INTERVAL_MS: u32 = 500;
+const DETECT_INTERVAL_MS: u32 = 100;
 
 // Constants for the qrcode scanner set to equal frame dimensions
 // FRAME_WIDTH and FRAME_HEIGHT must match dimensions of FRAMESIZE
@@ -51,10 +53,10 @@ const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240
 macro_rules! blink {
     ($pin: expr, $times: expr, $delay:tt ms) => {{
         for _ in 0..$times {
-            let _ = led.set_low();
-            Delay::delay_ms(&Delay::default(), delay_ms);
-            let _ = led.set_high();
-            Delay::delay_ms(&Delay::default(), delay_ms);
+            let _ = $pin.set_low();
+            Delay::delay_ms(&Delay::default(), $delay);
+            let _ = $pin.set_high();
+            Delay::delay_ms(&Delay::default(), $delay);
         }
     }};
 }
@@ -139,6 +141,7 @@ fn main() {
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
     let _ = led.set_high();
 
+
     // Blink led with specified frequency and repetition count
     fn blink_led(led: &mut PinDriver<'_, Gpio21, Output>, delay_ms: u32, repeat_count: u8) {
         // Blink set number of times
@@ -195,7 +198,7 @@ fn main() {
         esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
         FRAMESIZE,                          // 240x240 frame size
         12,                                 // JPEG Quality
-        3,                                  // Frame buffer count
+        1,                                  // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_LATEST,  // Grab mode: latest
     )
     .unwrap();
@@ -213,7 +216,6 @@ fn main() {
                 }
                 None => {
                     log::error!("Timeout");
-
                     esp_idf_hal::reset::restart();
                 }
             };
@@ -244,7 +246,7 @@ fn main() {
                     log::info!("Qrcode found: --> {}", text);
                     if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                         eprintln!("BLE error: {}", e);
-                    }
+                    } else { drop(frame_buffer); }
                     text
                 }
                 Err(err) => {
