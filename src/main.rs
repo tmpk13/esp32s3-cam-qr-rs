@@ -27,7 +27,6 @@ use esp_idf_hal::{
     units::FromValueType,
 };
 use mipidsi::{models::GC9A01, Builder};
-// use gc9a01::{self, Gc9a01, SPIDisplayInterface, display, prelude::*};
 
 // Blink count and frequency for signaling a scan
 const QR_SCAN_LED_BLINK_COUNT: u8 = 1;
