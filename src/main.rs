@@ -41,7 +41,7 @@ const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
 const QR_FOUND_LED_DELAY_MS: u32 = 50;
 
 // QR code scanning delay
-const DETECT_INTERVAL_MS: u32 = 35;
+const DETECT_INTERVAL_FRAMES: u32 = 30;
 
 // Constants for the qrcode scanner set to equal frame dimensions
 // FRAME_WIDTH and FRAME_HEIGHT must match dimensions of FRAMESIZE
@@ -50,46 +50,19 @@ const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
 
-macro_rules! blink {
-    ($pin: expr, $times: expr, $delay:tt ms) => {{
-        for _ in 0..$times {
-            let _ = $pin.set_low();
-            Delay::delay_ms(&Delay::default(), $delay);
-            let _ = $pin.set_high();
-            Delay::delay_ms(&Delay::default(), $delay);
-        }
-    }};
-}
-
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
-fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
-    fb_565.clear();
-    fb_565.reserve(greyscale.len() * 2);
-    for &grey in greyscale {
-        let r = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
-        let g = (grey as u16 * 3) / 255; // 8 - 2 : 6 bits
-        let b = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
-        let rgb_565 = (r << 11) | (g << 5) | b;
-        // u8 in xxxx xxxx
-        // r = 3 >> : 000x xxxx (5 remain)
-        // g = 3 >> : 00xx xxxx (6 remain)
-        // b = 3 >> : 000x xxxx (5 remain)
-        // *Losing the bottom 2-3 bits (integers 0-8)*
-        //
-        //  << 11   << 5  << 0
-        //     \/     \/    \/
-        // xxxxx 000000 00000 r
-        // 00000 xxxxxx 00000 g
-        // 00000 000000 xxxxx b
-        //
-        // | (Or) combines. Each value is shifted. All zeros for the others for a given section
+fn gray_from_565(rgb_565: u16) -> u8 {
+    // Conversion code adapted from: https://github.com/BartMassey
+    let rgb_565 = (rgb_565 >> 11) | (rgb_565 >> 5) | rgb_565;
+    
+    let red = (rgb_565 as f32 * 0.31) as u16;
+    let green = (rgb_565 as f32 * 0.63) as u16;
+    let blue = (rgb_565 as f32 * 0.31) as u16;
+    let gray = (red + green + blue) as u8;
 
-        // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
-        // To litte endian bytes --> [u8; 2]
-        // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
-        fb_565.extend_from_slice(&rgb_565.to_le_bytes());
-    }
+    gray
 }
+
 
 fn main() {
     // Esp-idf setup
@@ -192,7 +165,7 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
-        10_000_000,              // Set serial clock to 20MHZ
+        15_000_000,              // Set serial clock to 20MHZ
         esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
         esp_camera_rs::PIXFORMAT_RGB565, // Greyscale for QR code
@@ -203,52 +176,42 @@ fn main() {
     )
     .unwrap();
 
-    fn rgb565_to_gray(rgb565: u16) -> u8 {
-        let r = ((rgb565 >> 11) & 0x1F) << 3;
-        let g = ((rgb565 >> 5) & 0x3F) << 2;
-        let b = (rgb565 & 0x1F) << 3;
-        
-        ((r as f32 * 0.299) + (g as f32 * 0.587) + (b as f32 * 0.114)) as u8
-    }
+    
 
+    let mut framecount:u32 = 0;
     // If loop feature is enabled attempt to detect every interval
-    // let fb_565 = Vec::with_capacity((FRAME_WIDTH * FRAME_HEIGHT * 2) as usize);
     loop {
         // Loop every interval and detect
-
-        let _qr_string = {
-            log::info!("Loop Begin");
-
-            let frame_buffer = match camera.get_framebuffer() {
-                Some(fb) => {
-                    log::debug!("Frame captured");
-                    fb
-                }
-                None => {
-                    log::error!("Timeout");
-                    esp_idf_hal::reset::restart();
-                }
-            };
-
-            // let fb_data = frame_buffer.data().to_vec();
-
-            // fb_565.clear();
-            // grey_to_565(&fb_data, &mut fb_565);
-            let rgb_fb: Vec<u8> = frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
-            let grayscale = rgb_fb
-                .chunks_exact(2)
-                .map(|p| {let pb = u16::from_le_bytes([p[0usize], p[1usize]]); rgb565_to_gray(pb)})
-                .collect();
-            drop(frame_buffer);
-
-            log::info!("Drawing image");
+        let frame_buffer = match camera.get_framebuffer() {
+            Some(fb) => {
+                log::debug!("Frame captured");
+                fb
+            }
+            None => {
+                log::error!("Timeout");
+                esp_idf_hal::reset::restart();
+            }
+        };
 
 
-            let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
-            Image::new(&image, Point::zero())
-                .draw(&mut display)
-                .unwrap();
+        let rgb_fb: Vec<u8> = frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
+        let grayscale = rgb_fb
+            .chunks_exact(2)
+            .map(|p| {let pb = u16::from_le_bytes([p[0usize], p[1usize]]); gray_from_565(pb)})
+            .collect();
+        drop(frame_buffer);
 
+
+
+        let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
+        Image::new(&image, Point::zero())
+            .draw(&mut display)
+            .unwrap();
+
+    
+
+        
+        if framecount % DETECT_INTERVAL_FRAMES == 0 {
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
                 grayscale,
@@ -256,14 +219,6 @@ fn main() {
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
-            log::info!("Image Drawn");
-
-
-            // let mut fb_data: &[u8] = &frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
-
-            
-            log::info!("Starting scan");
-
             // Handel successful detection and no qrcode found cases
             match qrcode {
                 Ok(value) => {
@@ -273,22 +228,22 @@ fn main() {
                     if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                         eprintln!("BLE error: {}", e);
                     }
-                    text
+                    
                 }
                 Err(err) => {
                     blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
 
                     log::error!("No qrcode found: {}", err);
-                    "".to_string()
+                    
                 }
             }
+        }
             
+        framecount += 1;
+        if framecount > DETECT_INTERVAL_FRAMES { framecount = 0; }
 
-        };
-        log::info!("Scan done");
+        log::info!("Frame {}", framecount);
         
-        // Wait for detection again
-        // Delay::delay_ms(&Delay::default(), DETECT_INTERVAL_MS);
 
         // Set looped to true
         if !cfg!(feature = "loop") {
