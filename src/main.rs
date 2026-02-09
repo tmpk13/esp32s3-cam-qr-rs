@@ -179,6 +179,8 @@ fn main() {
     
 
     let mut framecount:u32 = 0;
+    let mut grayscale = vec![0u8, 240*240];
+    let mut rgb_fb = vec![0u8, 240*240*2];
     // If loop feature is enabled attempt to detect every interval
     loop {
         // Loop every interval and detect
@@ -194,11 +196,8 @@ fn main() {
         };
 
 
-        let rgb_fb: Vec<u8> = frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
-        let grayscale = rgb_fb
-            .chunks_exact(2)
-            .map(|p| {let pb = u16::from_le_bytes([p[0usize], p[1usize]]); gray_from_565(pb)})
-            .collect();
+        rgb_fb = frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
+        grayscale = frame_buffer.data().to_vec();
         drop(frame_buffer);
 
 
