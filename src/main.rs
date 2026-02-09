@@ -64,30 +64,21 @@ macro_rules! blink {
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
 fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
     fb_565.clear();
-    fb_565.reserve(greyscale.len() * 2);
-    for &grey in greyscale {
-        let r = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
-        let g = (grey as u16 * 3) / 255; // 8 - 2 : 6 bits
-        let b = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
+    fb_565.reserve(greyscale.len());
+    for &gray in greyscale {
+        let r = (gray as u16 * 3) / 255;
+        let g = (gray as u16 * 3) / 255;
+        let b = (gray as u16 * 3) / 255;
         let rgb_565 = (r << 11) | (g << 5) | b;
-        // u8 in xxxx xxxx
-        // r = 3 >> : 000x xxxx (5 remain)
-        // g = 3 >> : 00xx xxxx (6 remain)
-        // b = 3 >> : 000x xxxx (5 remain)
-        // *Losing the bottom 2-3 bits (integers 0-8)*
-        //
-        //  << 11   << 5  << 0
-        //     \/     \/    \/
-        // xxxxx 000000 00000 r
-        // 00000 xxxxxx 00000 g
-        // 00000 000000 xxxxx b
-        //
-        // | (Or) combines. Each value is shifted. All zeros for the others for a given section
 
-        // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
-        // To litte endian bytes --> [u8; 2]
-        // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
-        fb_565.extend_from_slice(&rgb_565.to_le_bytes());
+        // let grey = grey as f32 / 65_535.0;
+        // let red = (grey * 31.0) as u16;
+        // let green = (grey * 63.0) as u16;
+        // let blue = (grey * 31.0) as u16;
+        // let rgb_565 = (red << 11) | (green<< 5) | blue;
+        // let rgb = Rgb565::new(gray, gray, gray);
+        
+        fb_565.extend_from_slice(&rgb_565.to_be_bytes());
     }
 }
 
@@ -135,6 +126,7 @@ fn main() {
         .init(&mut Ets)
         .unwrap();
 
+
     // display.clear(Rgb565::WHITE).unwrap();
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
@@ -143,7 +135,7 @@ fn main() {
 
 
     // Blink led with specified frequency and repetition count
-    fn blink_led(led: &mut PinDriver<'_, Gpio21, Output>, delay_ms: u32, repeat_count: u8) {
+    fn  blink_led<T: esp_idf_hal::gpio::Pin>(led: &mut PinDriver<'_, T, Output>, delay_ms: u32, repeat_count: u8) {
         // Blink set number of times
         for _ in 0..repeat_count {
             // Blink led on and off

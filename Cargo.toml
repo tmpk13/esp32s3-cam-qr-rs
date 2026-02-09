@@ -34,6 +34,7 @@ esp-idf-sys = "0.36.1"
 mipidsi = "0.9.0"
 embedded-graphics = "0.8.1"
 esp32-nimble = "0.11.1"
+gc9a01-rs = "0.4.2"
 
 
 

@@ -195,6 +195,25 @@ Added `build.rs` to repo
 ## Wrong color on output
 Need to invert and swap color order for Gc9a01
 
+Convert greyscale to 565
+u8 in xxxx xxxx
+r = 3 >> : 000x xxxx (5 remain)
+g = 3 >> : 00xx xxxx (6 remain)
+b = 3 >> : 000x xxxx (5 remain)
+*Losing the bottom 2-3 bits (integers 0-8)*
+
+    << 11   << 5  << 0
+    \/     \/    \/
+xxxxx 000000 00000 r
+00000 xxxxxx 00000 g
+00000 000000 xxxxx b
+
+| (Or) combines. Each value is shifted. All zeros for the others for a given section
+
+Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
+To litte endian bytes --> [u8; 2]
+Extend add both at farthest unused --> Vec[..., u8, u8, ...]
+
 ## Stack overflow
 When adding the display to the camera receiving error about stack overflow  
 Most likely camera and lcd together using more than reserved  
