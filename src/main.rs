@@ -31,6 +31,7 @@ use esp_idf_hal::{
     units::FromValueType,
 };
 use mipidsi::{models::GC9A01, Builder};
+use rxing::RGBLuminanceSource;
 
 // Blink count and frequency for signaling a scan
 const QR_SCAN_LED_BLINK_COUNT: u8 = 1;
@@ -50,18 +51,7 @@ const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
 
-// Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
-fn gray_from_565(rgb_565: u16) -> u8 {
-    // Conversion code adapted from: https://github.com/BartMassey
-    let rgb_565 = (rgb_565 >> 11) | (rgb_565 >> 5) | rgb_565;
-    
-    let red = (rgb_565 as f32 * 0.31) as u16;
-    let green = (rgb_565 as f32 * 0.63) as u16;
-    let blue = (rgb_565 as f32 * 0.31) as u16;
-    let gray = (red + green + blue) as u8;
 
-    gray
-}
 
 
 fn main() {
@@ -90,7 +80,7 @@ fn main() {
         None::<AnyIOPin>,
         Some(cs),
         &SpiDriverConfig::new(),
-        &SpiConfig::new().baudrate(60.MHz().into()),
+        &SpiConfig::new().baudrate(70.MHz().into()),
     )
     .unwrap();
 
@@ -179,10 +169,14 @@ fn main() {
     
 
     let mut framecount:u32 = 0;
-    let mut grayscale = vec![0u8, 240*240];
-    let mut rgb_fb = vec![0u8, 240*240*2];
+    let mut grayscale = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
+    let mut rgb_fb = vec![0u8;  (FRAME_WIDTH * FRAME_HEIGHT * 2) as usize];
     // If loop feature is enabled attempt to detect every interval
     loop {
+
+
+
+
         // Loop every interval and detect
         let frame_buffer = match camera.get_framebuffer() {
             Some(fb) => {
@@ -195,9 +189,12 @@ fn main() {
             }
         };
 
+        rgb_fb[..frame_buffer.data().len()].copy_from_slice(frame_buffer.data());
 
-        rgb_fb = frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
-        grayscale = frame_buffer.data().to_vec();
+        // TODO: Change to get greyscale. Not correct but working
+        grayscale = rgb_fb.chunks(2).map(|x| x[0]).collect();
+
+        
         drop(frame_buffer);
 
 
@@ -213,7 +210,7 @@ fn main() {
         if framecount % DETECT_INTERVAL_FRAMES == 0 {
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
-                grayscale,
+                grayscale.to_vec(),
                 FRAME_WIDTH,
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
