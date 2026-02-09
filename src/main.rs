@@ -12,7 +12,11 @@ On the Xiao esp32s3 sense w/ camera
 mod ble;
 
 use embedded_graphics::{
-    Drawable, draw_target::DrawTarget, image::{Image, ImageRaw}, pixelcolor::Rgb565, prelude::{Point, RgbColor}
+    draw_target::DrawTarget,
+    image::Image,
+    prelude::Point,
+    Drawable,
+    {image::ImageRaw, pixelcolor::Rgb565},
 };
 
 use esp_idf_svc::hal::gpio::OutputPin;
@@ -46,28 +50,44 @@ const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
 
+macro_rules! blink {
+    ($pin: expr, $times: expr, $delay:tt ms) => {{
+        for _ in 0..$times {
+            let _ = $pin.set_low();
+            Delay::delay_ms(&Delay::default(), $delay);
+            let _ = $pin.set_high();
+            Delay::delay_ms(&Delay::default(), $delay);
+        }
+    }};
+}
+
 // Convert a greyscale (Vec<u8>) image to a 565 (Vec<u8>)x2 Image
-fn grey_to_565(greyscale: &[u8], fb_565: &mut [u16]) {
-    // fb_565.clear();
-    // fb_565.reserve(greyscale.len());
-    // let mut fb565: Vec<u16>;
-    // let mut fb_565= [0; 240*240];
-    for (i, &gray) in greyscale.iter().enumerate() {
-        // let r = (gray as u16 * 3) / 255;
-        // let g = (gray as u16 * 3) / 255;
-        // let b = (gray as u16 * 3) / 255;
-        // let rgb_565 = (r << 11) | (g << 5) | b;
+fn grey_to_565(greyscale: &[u8], fb_565: &mut Vec<u8>) {
+    fb_565.clear();
+    fb_565.reserve(greyscale.len() * 2);
+    for &grey in greyscale {
+        let r = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
+        let g = (grey as u16 * 3) / 255; // 8 - 2 : 6 bits
+        let b = (grey as u16 * 3) / 255; // 8 - 3 : 5 bits
+        let rgb_565 = (r << 11) | (g << 5) | b;
+        // u8 in xxxx xxxx
+        // r = 3 >> : 000x xxxx (5 remain)
+        // g = 3 >> : 00xx xxxx (6 remain)
+        // b = 3 >> : 000x xxxx (5 remain)
+        // *Losing the bottom 2-3 bits (integers 0-8)*
+        //
+        //  << 11   << 5  << 0
+        //     \/     \/    \/
+        // xxxxx 000000 00000 r
+        // 00000 xxxxxx 00000 g
+        // 00000 000000 xxxxx b
+        //
+        // | (Or) combines. Each value is shifted. All zeros for the others for a given section
 
-        let gray = (gray as u8) as f32 / 255.0;
-        let red = (gray * 31.0) as u16;
-        let green = (gray * 63.0) as u16;
-        let blue = (gray * 31.0) as u16;
-        let rgb_565 = (red << 11) | (green<< 5) | blue;
-        // let rgb = Rgb565::new(gray, gray, gray);
-
-        fb_565[i] = rgb_565;
-        // fb_565.push(rgb_565);
-        // fb_565[i] = rgb_565;
+        // Clone and append bytes. Split from 16 bits to 2x 8 bits. xxxxxxxxxxxxxxxx to xxxxxxxx xxxxxxxx
+        // To litte endian bytes --> [u8; 2]
+        // Extend add both at farthest unused --> Vec[..., u8, u8, ...]
+        fb_565.extend_from_slice(&rgb_565.to_le_bytes());
     }
 }
 
@@ -105,7 +125,7 @@ fn main() {
     let rst = PinDriver::output(rst).unwrap();
 
     let mut spi_buffer: [u8; 4096] = [0; 4096];
-    let mut di = SpiDeviceDriver::new(spi, dc, spi_buffer);
+    let di = mipidsi::interface::SpiInterface::new(spi, dc, &mut spi_buffer);
 
     // Display definition, invert and order colors for GC9A01
     let mut display = Builder::new(GC9A01, di)
@@ -115,10 +135,6 @@ fn main() {
         .init(&mut Ets)
         .unwrap();
 
-    
-
-    // let test_buffer = vec![0xF800u16; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
-    // display_driver.draw_buffer(&test_buffer).unwrap();
     // display.clear(Rgb565::WHITE).unwrap();
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
@@ -188,12 +204,11 @@ fn main() {
     .unwrap();
 
     // If loop feature is enabled attempt to detect every interval
-    // let mut fb_565: [u16; (FRAME_WIDTH * FRAME_HEIGHT) as usize] = [0u16; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
-    let mut fb_565 = vec![0u16; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
+    let mut fb_565 = Vec::with_capacity((FRAME_WIDTH * FRAME_HEIGHT * 2) as usize);
     loop {
         // Loop every interval and detect
 
-        let _qr_string = {
+        let qr_string = {
             let frame_buffer = match camera.get_framebuffer() {
                 Some(fb) => {
                     log::debug!("Frame captured");
@@ -206,15 +221,9 @@ fn main() {
             };
 
             let fb_data = frame_buffer.data().to_vec();
-            // drop(frame_buffer);
 
-            // fb_565.clear();
+            fb_565.clear();
             grey_to_565(&fb_data, &mut fb_565);
-            
-            
-            
-
-            
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
@@ -224,9 +233,7 @@ fn main() {
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
 
-            
-
-            let image = ImageRaw::<Rgb565>::new(frame_buffer.data().into(), FRAME_WIDTH);
+            let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
             Image::new(&image, Point::zero())
                 .draw(&mut display)
                 .unwrap();
@@ -239,8 +246,7 @@ fn main() {
                     log::info!("Qrcode found: --> {}", text);
                     if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                         eprintln!("BLE error: {}", e);
-                    }
-                    
+                    } else { drop(frame_buffer); }
                     text
                 }
                 Err(err) => {
