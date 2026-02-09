@@ -41,7 +41,7 @@ const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
 const QR_FOUND_LED_DELAY_MS: u32 = 50;
 
 // QR code scanning delay
-const DETECT_INTERVAL_MS: u32 = 100;
+const DETECT_INTERVAL_MS: u32 = 35;
 
 // Constants for the qrcode scanner set to equal frame dimensions
 // FRAME_WIDTH and FRAME_HEIGHT must match dimensions of FRAMESIZE
@@ -192,23 +192,33 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
-        10_000_000,              // Set serial clock to 10MHZ
+        10_000_000,              // Set serial clock to 20MHZ
         esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
-        esp_camera_rs::PIXFORMAT_GRAYSCALE, // Greyscale for QR code
+        esp_camera_rs::PIXFORMAT_RGB565, // Greyscale for QR code
         FRAMESIZE,                          // 240x240 frame size
-        12,                                 // JPEG Quality
+        20,                                 // JPEG Quality
         1,                                  // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_LATEST,  // Grab mode: latest
     )
     .unwrap();
 
+    fn rgb565_to_gray(rgb565: u16) -> u8 {
+        let r = ((rgb565 >> 11) & 0x1F) << 3;
+        let g = ((rgb565 >> 5) & 0x3F) << 2;
+        let b = (rgb565 & 0x1F) << 3;
+        
+        ((r as f32 * 0.299) + (g as f32 * 0.587) + (b as f32 * 0.114)) as u8
+    }
+
     // If loop feature is enabled attempt to detect every interval
-    let mut fb_565 = Vec::with_capacity((FRAME_WIDTH * FRAME_HEIGHT * 2) as usize);
+    // let fb_565 = Vec::with_capacity((FRAME_WIDTH * FRAME_HEIGHT * 2) as usize);
     loop {
         // Loop every interval and detect
 
-        let qr_string = {
+        let _qr_string = {
+            log::info!("Loop Begin");
+
             let frame_buffer = match camera.get_framebuffer() {
                 Some(fb) => {
                     log::debug!("Frame captured");
@@ -220,23 +230,39 @@ fn main() {
                 }
             };
 
-            let fb_data = frame_buffer.data().to_vec();
+            // let fb_data = frame_buffer.data().to_vec();
 
-            fb_565.clear();
-            grey_to_565(&fb_data, &mut fb_565);
+            // fb_565.clear();
+            // grey_to_565(&fb_data, &mut fb_565);
+            let rgb_fb: Vec<u8> = frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
+            let grayscale = rgb_fb
+                .chunks_exact(2)
+                .map(|p| {let pb = u16::from_le_bytes([p[0usize], p[1usize]]); rgb565_to_gray(pb)})
+                .collect();
+            drop(frame_buffer);
+
+            log::info!("Drawing image");
+
+
+            let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
+            Image::new(&image, Point::zero())
+                .draw(&mut display)
+                .unwrap();
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
-                fb_data,
+                grayscale,
                 FRAME_WIDTH,
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
+            log::info!("Image Drawn");
 
-            let image = ImageRaw::<Rgb565>::new(&fb_565, FRAME_WIDTH);
-            Image::new(&image, Point::zero())
-                .draw(&mut display)
-                .unwrap();
+
+            // let mut fb_data: &[u8] = &frame_buffer.data().iter().flat_map(|x| x.to_be_bytes()).collect();
+
+            
+            log::info!("Starting scan");
 
             // Handel successful detection and no qrcode found cases
             match qrcode {
@@ -246,7 +272,7 @@ fn main() {
                     log::info!("Qrcode found: --> {}", text);
                     if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                         eprintln!("BLE error: {}", e);
-                    } else { drop(frame_buffer); }
+                    }
                     text
                 }
                 Err(err) => {
@@ -256,10 +282,13 @@ fn main() {
                     "".to_string()
                 }
             }
-        };
+            
 
+        };
+        log::info!("Scan done");
+        
         // Wait for detection again
-        Delay::delay_ms(&Delay::default(), DETECT_INTERVAL_MS);
+        // Delay::delay_ms(&Delay::default(), DETECT_INTERVAL_MS);
 
         // Set looped to true
         if !cfg!(feature = "loop") {
