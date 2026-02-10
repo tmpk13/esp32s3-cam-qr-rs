@@ -104,7 +104,11 @@ fn main() {
     let _ = led.set_high();
 
     // Blink led with specified frequency and repetition count
-    fn blink_led<T: esp_idf_hal::gpio::Pin>(led: &mut PinDriver<'_, T, Output>, delay_ms: u32, repeat_count: u8) {
+    fn blink_led<T: esp_idf_hal::gpio::Pin>(
+        led: &mut PinDriver<'_, T, Output>,
+        delay_ms: u32,
+        repeat_count: u8,
+    ) {
         // Blink set number of times
         for _ in 0..repeat_count {
             // Blink led on and off
@@ -280,6 +284,30 @@ fn main() {
                     // Check for format
                     if valid_code {
                         tx.send(text.clone()).unwrap();
+                    }
+
+                    loop {
+                        match done_rx.try_recv() {
+                            Ok(Ok(())) => {
+                                // Success
+                                log::info!("BLE sent OK");
+                                break;
+                            }
+                            Ok(Err(e)) => {
+                                // Recieved error from ble
+                                log::error!("{}", e);
+                                break;
+                            }
+                            Err(mpsc::TryRecvError::Empty) => {
+                                // No response
+                                break;
+                            }
+                            Err(mpsc::TryRecvError::Disconnected) => {
+                                // Ble disconnected
+
+                                break;
+                            }
+                        }
                     }
 
                     Delay::delay_ms(&Delay::new_default(), 5000);
