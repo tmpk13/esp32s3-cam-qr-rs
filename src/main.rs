@@ -28,6 +28,7 @@ use esp_idf_hal::{
     gpio::{Gpio21, Output, PinDriver},
     peripherals::Peripherals,
     spi::{SpiConfig, SpiDeviceDriver, SpiDriverConfig},
+    task::thread::ThreadSpawnConfiguration,
     units::FromValueType,
 };
 use mipidsi::{models::GC9A01, Builder};
@@ -49,6 +50,8 @@ const DETECT_INTERVAL_FRAMES: u32 = 30;
 const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
+
+use std::sync::mpsc;
 
 fn main() {
     // Esp-idf setup
@@ -101,7 +104,7 @@ fn main() {
     let _ = led.set_high();
 
     // Blink led with specified frequency and repetition count
-    fn blink_led(led: &mut PinDriver<'_, Gpio21, Output>, delay_ms: u32, repeat_count: u8) {
+    fn blink_led<T: esp_idf_hal::gpio::Pin>(led: &mut PinDriver<'_, T, Output>, delay_ms: u32, repeat_count: u8) {
         // Blink set number of times
         for _ in 0..repeat_count {
             // Blink led on and off
@@ -150,7 +153,7 @@ fn main() {
         peripherals.pins.gpio13, // gpio13 pin_pclk
         peripherals.pins.gpio40, // gpio40 pin_sda
         peripherals.pins.gpio39, // gpio39 pin_scl
-        15_000_000,              // Set serial clock to 20MHZ
+        10_000_000,              // Set serial clock to 20MHZ
         esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
         esp_camera_rs::PIXFORMAT_RGB565,   // Greyscale for QR code
@@ -162,8 +165,19 @@ fn main() {
     .unwrap();
 
     let mut framecount: u32 = 0;
+    // Buffer for rxing QR code luma detect
     let mut grayscale = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
+    // Buffer for rgb data from camera
     let mut rgb_fb = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT * 2) as usize];
+
+    // Setup mpsc communication lines
+    // tx and rx to send message to ble module
+    let (tx, rx) = mpsc::channel::<String>();
+    // done tx and rx to receive done state from ble module
+    let (done_tx, done_rx) = mpsc::channel::<Result<(), String>>();
+
+    // Start ble task from ble module
+    ble::start_ble_task(rx, done_tx);
 
     // If loop feature is enabled attempt to detect every interval
     loop {
@@ -241,6 +255,7 @@ fn main() {
                         Rgb565::RED
                     };
 
+                    // Signal success in the console and via the onboard led
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
 
@@ -264,9 +279,7 @@ fn main() {
 
                     // Check for format
                     if valid_code {
-                        if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
-                            eprintln!("BLE error: {}", e);
-                        }
+                        tx.send(text.clone()).unwrap();
                     }
 
                     Delay::delay_ms(&Delay::new_default(), 5000);

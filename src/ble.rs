@@ -1,17 +1,49 @@
 use esp32_nimble::{uuid128, BLEDevice, BLEScan};
-use esp_idf_hal::{delay, task::block_on};
+use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
+use esp_idf_hal::{
+    delay::{self, Delay},
+    task::block_on,
+};
+use std::sync::mpsc;
 
 const SERVICE_UUID: &str = "921a6069-4357-4287-a9af-fd386fc0dcad";
 const MSG_CHAR_UUID: &str = "1ad4aa0c-5cb7-4be3-9916-9c63f19c03fd";
 const DEVICE_NAME: &str = "esp-msg";
 
-pub fn send_command(
-    msg: &str,
-    delay: &esp_idf_hal::delay::Delay,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn start_ble_task(rx: mpsc::Receiver<String>, done_tx: mpsc::Sender<Result<(), String>>) {
+    ThreadSpawnConfiguration {
+        name: Some(b"BLE\0"),
+        stack_size: 8192,
+        priority: 5,
+        pin_to_core: Some(esp_idf_hal::cpu::Core::Core0),
+        ..Default::default()
+    }
+    .set()
+    .unwrap();
+
+    std::thread::spawn(move || {
+        let ble_device = BLEDevice::take();
+
+        loop {
+            match rx.recv() {
+                Ok(text) => {
+                    log::info!("BLE started");
+                    let result = send_command(ble_device, &text);
+                    // Send completion message, or error as string
+                    let _ = done_tx.send(result.map_err(|e| e.to_string()));
+                }
+                Err(e) => {
+                    log::error!("BLE connection broke {}", e);
+                    break;
+                }
+            }
+        }
+    });
+}
+
+pub fn send_command(ble_device: &BLEDevice, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Disable async, as not currently async
     block_on(async {
-        let ble_device = BLEDevice::take();
         let mut ble_scan = BLEScan::new();
 
         let device = ble_scan
@@ -24,7 +56,7 @@ pub fn send_command(
                     .map(|_| *device)
             })
             .await?
-            .ok_or("Device not found")?;
+            .ok_or("Device not found during scan")?;
 
         let mut client = ble_device.new_client();
         client.connect(&device.addr()).await?;
@@ -34,7 +66,7 @@ pub fn send_command(
         characteristic.write_value(msg.as_bytes(), true).await?;
 
         // Wait to avoid exiting before message is sent
-        delay::Delay::delay_ms(&delay, 5000);
+        delay::Delay::delay_ms(&Delay::default(), 2000);
         client.disconnect()?;
 
         Ok(())

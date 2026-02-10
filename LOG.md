@@ -249,3 +249,6 @@ Reuse buffer : did not work
 Need to update esp-camera-rs to return buffer:
 https://github.com/espressif/esp32-camera/blob/fb7b85b2b79fb039551c67d295e884d2b1eb907b/driver/esp_camera.c#L404
 https://components.espressif.com/components/espressif/esp32-camera/versions/2.1.4/readme
+
+Watch dog is triggering on large spi writes. Probably due to using Ets.
+Lowering camera clock speed seems to fix the issue (15 MHz -> 10 MHz)

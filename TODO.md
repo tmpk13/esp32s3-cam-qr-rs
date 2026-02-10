@@ -1,1 +1,2 @@
 - [ ] Swap from using Ets as delay. Sometimes starving the watchdog.
+- [ ] Add match, machine state
