@@ -284,28 +284,31 @@ fn main() {
                     // Check for format
                     if valid_code {
                         tx.send(text.clone()).unwrap();
-                    }
+                    
+                        log::info!("For BLE connection");
 
-                    loop {
-                        match done_rx.try_recv() {
-                            Ok(Ok(())) => {
-                                // Success
-                                log::info!("BLE sent OK");
-                                break;
-                            }
-                            Ok(Err(e)) => {
-                                // Recieved error from ble
-                                log::error!("{}", e);
-                                break;
-                            }
-                            Err(mpsc::TryRecvError::Empty) => {
-                                // No response loop
+                        loop {
+                            match done_rx.try_recv() {
+                                Ok(Ok(())) => {
+                                    // Success
+                                    log::info!("BLE sent OK");
+                                    break;
+                                }
+                                Ok(Err(e)) => {
+                                    // Recieved error from ble
+                                    log::error!("{}", e);
+                                    break;
+                                }
+                                Err(mpsc::TryRecvError::Empty) => {
+                                    // No response loop
+                                    log::info!("Waiting...");
+                                    Delay::delay_ms(&Delay::default(), 1000);
+                                }
+                                Err(mpsc::TryRecvError::Disconnected) => {
+                                    // Ble disconnected
 
-                            }
-                            Err(mpsc::TryRecvError::Disconnected) => {
-                                // Ble disconnected
-
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }

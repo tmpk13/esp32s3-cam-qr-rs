@@ -252,3 +252,5 @@ https://components.espressif.com/components/espressif/esp32-camera/versions/2.1.
 
 Watch dog is triggering on large spi writes. Probably due to using Ets.
 Lowering camera clock speed seems to fix the issue (15 MHz -> 10 MHz)
+
+Ble match is crashing
