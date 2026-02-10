@@ -50,7 +50,7 @@ const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240
 use std::sync::mpsc;
 
 
-fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, count: u32, max: u32, center: Point)
+fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, message: &str, count: u32, max: u32, center: Point)
 where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug 
 {
     // display.clear(Rgb565::WHITE).unwrap();
@@ -68,7 +68,7 @@ where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug
     .unwrap();
 
     Text::with_alignment(
-        format!("Sending message").as_str(),
+        format!("Sending: {}", message).as_str(),
         center-Point::new(0, 20),
         MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK),
         embedded_graphics::text::Alignment::Center,
@@ -340,11 +340,11 @@ fn main() {
                                 }
                                 Err(mpsc::TryRecvError::Empty) => {
                                     // No response loop
-                                    log::info!("Waiting... {}/10", loop_count);
+                                    log::info!("Waiting... {}/200", loop_count);
                                     
-                                    loading_bar(&mut display, loop_count, 100, center);
+                                    loading_bar(&mut display, &text, loop_count, 200, center);
 
-                                    Delay::delay_ms(&Delay::default(), 100);
+                                    Delay::delay_ms(&Delay::default(), 50);
                                     loop_count += 1;
                                 }
                                 Err(mpsc::TryRecvError::Disconnected) => {
