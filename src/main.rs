@@ -13,30 +13,25 @@ mod ble;
 
 use embedded_graphics::{
     image::{Image, ImageRaw},
-    mono_font::{iso_8859_15::FONT_10X20, iso_8859_4::FONT_6X10, MonoFont, MonoTextStyle},
-    pixelcolor::{raw::BigEndian, Rgb565},
+    mono_font::{iso_8859_15::FONT_10X20, MonoTextStyle},
+    pixelcolor::{Rgb565},
     prelude::{Point, Primitive, RgbColor, *},
     primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable},
     text::Text,
     Drawable,
-    prelude::*
 };
 
 use esp_idf_hal::{
     delay::Delay,
     delay::Ets,
     gpio::AnyIOPin,
-    gpio::{Gpio21, Output, PinDriver},
+    gpio::{Output, PinDriver},
     peripherals::Peripherals,
     spi::{SpiConfig, SpiDeviceDriver, SpiDriverConfig},
-    task::thread::ThreadSpawnConfiguration,
     units::FromValueType,
 };
 use mipidsi::{models::GC9A01, Builder};
 
-// Blink count and frequency for signaling a scan
-const QR_SCAN_LED_BLINK_COUNT: u8 = 1;
-const QR_SCAN_LED_DELAY_MS: u32 = 500;
 
 // Blink count and frequency for signaling a successful scan
 const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
@@ -74,7 +69,7 @@ where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug
 
     Text::with_alignment(
         format!("Sending message").as_str(),
-        center,
+        center-Point::new(0, 20),
         MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK),
         embedded_graphics::text::Alignment::Center,
     )
@@ -122,12 +117,25 @@ fn main() {
     // Display definition, invert and order colors for GC9A01
     let mut display = Builder::new(GC9A01, di)
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
-        .color_order(mipidsi::options::ColorOrder::Rgb)
+        .color_order(mipidsi::options::ColorOrder::Bgr)
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
 
     // display.clear(Rgb565::WHITE).unwrap();
+
+    macro_rules! display_text {
+        ($text:expr, $color:expr) => {
+            Text::with_alignment(
+                $text,
+                Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32),
+                MonoTextStyle::new(&FONT_10X20, $color),
+                embedded_graphics::text::Alignment::Center,
+            )
+            .draw(&mut display)
+            .unwrap();
+        };
+    }
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
@@ -234,7 +242,7 @@ fn main() {
 
         drop(frame_buffer);
 
-        let radius = 100;
+        let radius = 115;
         let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
         let progress = ((360.0 / DETECT_INTERVAL_FRAMES as f32) * framecount as f32).deg();
 
@@ -305,9 +313,12 @@ fn main() {
 
                     // Check for format
                     if valid_code {
-                        tx.send(text.clone()).unwrap();
+                        // tx.send(text.clone()).unwrap();
+                        tx.send("open_close_servo".to_string()).unwrap();
 
                         log::info!("For BLE connection");
+                        display.clear(Rgb565::WHITE).unwrap();
+
 
                         let mut loop_count = 0;
                         loop {
@@ -319,16 +330,21 @@ fn main() {
                                 }
                                 Ok(Err(e)) => {
                                     // Recieved error from ble
-                                    log::error!("{}", e);
+                                    log::error!("Ble error: {}", e);
+
+                                    display.clear(Rgb565::WHITE).unwrap();
+                                    display_text!("Device not found", Rgb565::RED);
+                                    Delay::delay_ms(&Delay::default(), 5000);
+
                                     break;
                                 }
                                 Err(mpsc::TryRecvError::Empty) => {
                                     // No response loop
                                     log::info!("Waiting... {}/10", loop_count);
                                     
-                                    loading_bar(&mut display, loop_count, 10, center);
+                                    loading_bar(&mut display, loop_count, 100, center);
 
-                                    Delay::delay_ms(&Delay::default(), 1000);
+                                    Delay::delay_ms(&Delay::default(), 100);
                                     loop_count += 1;
                                 }
                                 Err(mpsc::TryRecvError::Disconnected) => {
