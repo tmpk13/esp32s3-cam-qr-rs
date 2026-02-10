@@ -299,8 +299,8 @@ fn main() {
                                 break;
                             }
                             Err(mpsc::TryRecvError::Empty) => {
-                                // No response
-                                break;
+                                // No response loop
+
                             }
                             Err(mpsc::TryRecvError::Disconnected) => {
                                 // Ble disconnected
