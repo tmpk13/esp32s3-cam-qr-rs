@@ -263,7 +263,7 @@ fn main() {
 
         
         framecount += 1;
-        if framecount >= DETECT_INTERVAL_FRAMES { framecount = 1; }
+        if framecount > DETECT_INTERVAL_FRAMES { framecount = 1; }
 
         log::info!("Frame {}", framecount);
 
