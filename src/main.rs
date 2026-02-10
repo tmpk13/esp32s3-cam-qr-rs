@@ -12,7 +12,13 @@ On the Xiao esp32s3 sense w/ camera
 mod ble;
 
 use embedded_graphics::{
-    Drawable, image::{Image, ImageRaw}, mono_font::{MonoFont, MonoTextStyle, iso_8859_4::FONT_6X10, iso_8859_15::FONT_10X20}, pixelcolor::{Rgb565, raw::BigEndian}, prelude::{Point, Primitive, RgbColor, *}, primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable}, text::Text
+    image::{Image, ImageRaw},
+    mono_font::{iso_8859_15::FONT_10X20, iso_8859_4::FONT_6X10, MonoFont, MonoTextStyle},
+    pixelcolor::{raw::BigEndian, Rgb565},
+    prelude::{Point, Primitive, RgbColor, *},
+    primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable},
+    text::Text,
+    Drawable,
 };
 
 use esp_idf_hal::{
@@ -43,9 +49,6 @@ const DETECT_INTERVAL_FRAMES: u32 = 30;
 const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
-
-
-
 
 fn main() {
     // Esp-idf setup
@@ -96,7 +99,6 @@ fn main() {
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
     let _ = led.set_high();
-
 
     // Blink led with specified frequency and repetition count
     fn blink_led(led: &mut PinDriver<'_, Gpio21, Output>, delay_ms: u32, repeat_count: u8) {
@@ -151,27 +153,22 @@ fn main() {
         15_000_000,              // Set serial clock to 20MHZ
         esp_idf_sys::ledc_timer_t_LEDC_TIMER_0,
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
-        esp_camera_rs::PIXFORMAT_RGB565, // Greyscale for QR code
-        FRAMESIZE,                          // 240x240 frame size
-        20,                                 // JPEG Quality
-        1,                                  // Frame buffer count
-        esp_camera_rs::CAMERA_GRAB_LATEST,  // Grab mode: latest
+        esp_camera_rs::PIXFORMAT_RGB565,   // Greyscale for QR code
+        FRAMESIZE,                         // 240x240 frame size
+        20,                                // JPEG Quality
+        1,                                 // Frame buffer count
+        esp_camera_rs::CAMERA_GRAB_LATEST, // Grab mode: latest
     )
     .unwrap();
 
-    
-
-    let mut framecount:u32 = 0;
+    let mut framecount: u32 = 0;
     let mut grayscale = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
-    let mut rgb_fb = vec![0u8;  (FRAME_WIDTH * FRAME_HEIGHT * 2) as usize];
-
+    let mut rgb_fb = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT * 2) as usize];
 
     // If loop feature is enabled attempt to detect every interval
     loop {
-
         // Add match for button vs scan loop
         // Add PIR detect match
-
 
         // Loop every interval and detect
         let frame_buffer = match camera.get_framebuffer() {
@@ -192,23 +189,21 @@ fn main() {
         let radius = 100;
         let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
         let progress = ((360.0 / DETECT_INTERVAL_FRAMES as f32) * framecount as f32).deg();
-        
 
         // Generate arc
         let arc = Arc::new(
-            Point { 
-                x: (FRAME_WIDTH/2 - radius) as i32, 
-                y: (FRAME_HEIGHT/2 - radius)  as i32 
-            }, 
-                radius*2, 
-                -90.0.deg(),
-                progress
+            Point {
+                x: (FRAME_WIDTH / 2 - radius) as i32,
+                y: (FRAME_HEIGHT / 2 - radius) as i32,
+            },
+            radius * 2,
+            -90.0.deg(),
+            progress,
         )
         .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 10));
 
         // Add progress bar to the image
-        arc.pixels()
-        .for_each(|Pixel(point, color)| {
+        arc.pixels().for_each(|Pixel(point, color)| {
             let index = ((point.y * FRAME_WIDTH as i32 + point.x) * 2) as usize;
             let color_u16 = color.into_storage();
             rgb_fb[index] = (color_u16 >> 8) as u8;
@@ -217,12 +212,11 @@ fn main() {
 
         let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
 
-        Image::new(&image, Point::zero()).draw(&mut display).unwrap();
-
-        
+        Image::new(&image, Point::zero())
+            .draw(&mut display)
+            .unwrap();
 
         if framecount % DETECT_INTERVAL_FRAMES == 0 {
-
             // TODO: Change to get greyscale. Not correct but working
             for (i, v) in rgb_fb.chunks(2).enumerate() {
                 grayscale[i] = v[0];
@@ -238,35 +232,57 @@ fn main() {
             // Handel successful detection and no qrcode found cases
             match qrcode {
                 Ok(value) => {
-                    let text = value.getText().to_string();
+                    let text: String = value.getText().to_string();
+                    let valid_code: bool =
+                        text.len() == 7 && text.bytes().all(|c| c.is_ascii_digit());
+                    let text_color = if valid_code {
+                        Rgb565::GREEN
+                    } else {
+                        Rgb565::RED
+                    };
+
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
-                    
-                    Rectangle::new(Point { x: 0, y: 0 }, Size { width: FRAME_WIDTH, height: FRAME_HEIGHT }).draw_styled(&PrimitiveStyle::with_fill(Rgb565::BLACK), &mut display).unwrap();
-                    Text::with_alignment(text.as_str(), center, MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN), embedded_graphics::text::Alignment::Center).draw(&mut display).unwrap();
+
+                    Rectangle::new(
+                        Point { x: 0, y: 0 },
+                        Size {
+                            width: FRAME_WIDTH,
+                            height: FRAME_HEIGHT,
+                        },
+                    )
+                    .draw_styled(&PrimitiveStyle::with_fill(Rgb565::BLACK), &mut display)
+                    .unwrap();
+                    Text::with_alignment(
+                        text.as_str(),
+                        center,
+                        MonoTextStyle::new(&FONT_10X20, text_color),
+                        embedded_graphics::text::Alignment::Center,
+                    )
+                    .draw(&mut display)
+                    .unwrap();
 
                     // Check for format
-                    if text.len() == 7 && text.bytes().all(|c| c.is_ascii_digit())  {
+                    if valid_code {
                         if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                             eprintln!("BLE error: {}", e);
                         }
                     }
 
-                    Delay::delay_ms(&Delay::new_default(), 1000);
+                    Delay::delay_ms(&Delay::new_default(), 5000);
                 }
                 Err(err) => {
                     // blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
 
                     log::error!("No qrcode found: {}", err);
-                    
                 }
             }
-            
         }
-            
-        
+
         framecount += 1;
-        if framecount > DETECT_INTERVAL_FRAMES { framecount = 1; }
+        if framecount > DETECT_INTERVAL_FRAMES {
+            framecount = 1;
+        }
 
         log::info!("Frame {}", framecount);
 
