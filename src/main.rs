@@ -263,15 +263,7 @@ fn main() {
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
 
-                    Rectangle::new(
-                        Point { x: 0, y: 0 },
-                        Size {
-                            width: FRAME_WIDTH,
-                            height: FRAME_HEIGHT,
-                        },
-                    )
-                    .draw_styled(&PrimitiveStyle::with_fill(Rgb565::BLACK), &mut display)
-                    .unwrap();
+                    display.clear(Rgb565::BLACK).unwrap();
                     Text::with_alignment(
                         text.as_str(),
                         center,
@@ -303,7 +295,7 @@ fn main() {
                                 Err(mpsc::TryRecvError::Empty) => {
                                     // No response loop
                                     log::info!("Waiting...");
-
+                                    display.clear(Rgb565::BLACK).unwrap();
                                     Rectangle::new(
                                         Point { x: 0, y: 0 },
                                         Size {
