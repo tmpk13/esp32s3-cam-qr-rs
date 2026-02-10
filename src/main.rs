@@ -12,14 +12,8 @@ On the Xiao esp32s3 sense w/ camera
 mod ble;
 
 use embedded_graphics::{
-    draw_target::DrawTarget,
-    image::Image,
-    prelude::Point,
-    Drawable,
-    {image::ImageRaw, pixelcolor::Rgb565},
+    Drawable, image::{Image, ImageRaw}, mono_font::{MonoFont, MonoTextStyle, iso_8859_4::FONT_6X10, iso_8859_15::FONT_10X20}, pixelcolor::{Rgb565, raw::BigEndian}, prelude::{Point, Primitive, RgbColor, *}, primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable}, text::Text
 };
-
-use esp_idf_svc::hal::gpio::OutputPin;
 
 use esp_idf_hal::{
     delay::Delay,
@@ -31,7 +25,6 @@ use esp_idf_hal::{
     units::FromValueType,
 };
 use mipidsi::{models::GC9A01, Builder};
-use rxing::RGBLuminanceSource;
 
 // Blink count and frequency for signaling a scan
 const QR_SCAN_LED_BLINK_COUNT: u8 = 1;
@@ -171,10 +164,13 @@ fn main() {
     let mut framecount:u32 = 0;
     let mut grayscale = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
     let mut rgb_fb = vec![0u8;  (FRAME_WIDTH * FRAME_HEIGHT * 2) as usize];
+
+
     // If loop feature is enabled attempt to detect every interval
     loop {
 
-
+        // Add match for button vs scan loop
+        // Add PIR detect match
 
 
         // Loop every interval and detect
@@ -194,19 +190,42 @@ fn main() {
         // TODO: Change to get greyscale. Not correct but working
         grayscale = rgb_fb.chunks(2).map(|x| x[0]).collect();
 
-        
+
+
         drop(frame_buffer);
 
+        let radius = 100;
+        let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
+        let progress = ((360.0 / DETECT_INTERVAL_FRAMES as f32) * framecount as f32).deg();
+        
 
+        // Generate arc
+        let arc = Arc::new(
+            Point { 
+                x: (FRAME_WIDTH/2 - radius) as i32, 
+                y: (FRAME_HEIGHT/2 - radius)  as i32 
+            }, 
+                radius*2, 
+                -90.0.deg(),
+                progress
+        )
+        .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 10));
+
+        // Add progress bar to the image
+        arc.pixels()
+        .foreach(|Pixel(point, color)| {
+            let index = ((point.y * FRAME_WIDTH as i32 + point.x) * 2) as usize;
+            let color_u16 = color.into_storage();
+            rgb_fb[idx] = (color_u16 >> 8) as u8;
+            rgb_fb[idx + 1] = (color_u16 & 0xFF) as u8;
+        });
 
         let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
-        Image::new(&image, Point::zero())
-            .draw(&mut display)
-            .unwrap();
 
-    
+        Image::new(&image, Point::zero()).draw(&mut display).unwrap();
 
         
+
         if framecount % DETECT_INTERVAL_FRAMES == 0 {
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
@@ -221,10 +240,15 @@ fn main() {
                     let text = value.getText().to_string();
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
+                    
+                    Text::with_alignment(text.as_str(), center, MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN), embedded_graphics::text::Alignment::Center).draw(&mut display).unwrap();
+
                     if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                         eprintln!("BLE error: {}", e);
                     }
-                    
+
+                    Delay::delay_ms(&Delay::new_default(), 1000);
+                    return;
                 }
                 Err(err) => {
                     blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
@@ -233,13 +257,15 @@ fn main() {
                     
                 }
             }
+            
         }
             
+
+        
         framecount += 1;
-        if framecount > DETECT_INTERVAL_FRAMES { framecount = 0; }
+        if framecount >= DETECT_INTERVAL_FRAMES { framecount = 1; }
 
         log::info!("Frame {}", framecount);
-        
 
         // Set looped to true
         if !cfg!(feature = "loop") {
