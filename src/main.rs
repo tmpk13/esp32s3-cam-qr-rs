@@ -245,11 +245,12 @@ fn main() {
                     Rectangle::new(Point { x: 0, y: 0 }, Size { width: FRAME_WIDTH, height: FRAME_HEIGHT }).draw_styled(&PrimitiveStyle::with_fill(Rgb565::BLACK), &mut display).unwrap();
                     Text::with_alignment(text.as_str(), center, MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN), embedded_graphics::text::Alignment::Center).draw(&mut display).unwrap();
 
-                    
+                    // Check for format
+                    if text.len() == 7 && text.bytes().all(|c| c.is_ascii_digit())  {
                         if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
                             eprintln!("BLE error: {}", e);
                         }
-                    
+                    }
 
                     Delay::delay_ms(&Delay::new_default(), 1000);
                 }
