@@ -213,11 +213,11 @@ fn main() {
 
         // Add progress bar to the image
         arc.pixels()
-        .foreach(|Pixel(point, color)| {
+        .for_each(|Pixel(point, color)| {
             let index = ((point.y * FRAME_WIDTH as i32 + point.x) * 2) as usize;
             let color_u16 = color.into_storage();
-            rgb_fb[idx] = (color_u16 >> 8) as u8;
-            rgb_fb[idx + 1] = (color_u16 & 0xFF) as u8;
+            rgb_fb[index] = (color_u16 >> 8) as u8;
+            rgb_fb[index + 1] = (color_u16 & 0xFF) as u8;
         });
 
         let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
