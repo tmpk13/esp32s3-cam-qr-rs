@@ -19,6 +19,7 @@ use embedded_graphics::{
     primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable},
     text::Text,
     Drawable,
+    prelude::*
 };
 
 use esp_idf_hal::{
@@ -52,6 +53,35 @@ const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
 
 use std::sync::mpsc;
+
+
+fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, count: u32, max: u32, center: Point)
+where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug 
+{
+    // display.clear(Rgb565::WHITE).unwrap();
+    Rectangle::new(
+        Point { x: 10, y: ((FRAME_HEIGHT-10)/2) as i32 },
+        Size {
+            width: (count) * 240 / max,
+            height: 20,
+        },
+    )
+    .draw_styled(
+        &PrimitiveStyle::with_fill(Rgb565::GREEN),
+        display,
+    )
+    .unwrap();
+
+    Text::with_alignment(
+        format!("Sending message").as_str(),
+        center,
+        MonoTextStyle::new(&FONT_10X20, Rgb565::BLACK),
+        embedded_graphics::text::Alignment::Center,
+    )
+    .draw(display)
+    .unwrap();
+}
+
 
 fn main() {
     // Esp-idf setup
@@ -294,20 +324,10 @@ fn main() {
                                 }
                                 Err(mpsc::TryRecvError::Empty) => {
                                     // No response loop
-                                    log::info!("Waiting...");
-                                    display.clear(Rgb565::BLACK).unwrap();
-                                    Rectangle::new(
-                                        Point { x: 0, y: 0 },
-                                        Size {
-                                            width: loop_count * 240 / 10,
-                                            height: FRAME_HEIGHT,
-                                        },
-                                    )
-                                    .draw_styled(
-                                        &PrimitiveStyle::with_fill(Rgb565::BLACK),
-                                        &mut display,
-                                    )
-                                    .unwrap();
+                                    log::info!("Waiting... {}/10", loop_count);
+                                    
+                                    loading_bar(&mut display, loop_count, 10, center);
+
                                     Delay::delay_ms(&Delay::default(), 1000);
                                     loop_count += 1;
                                 }
