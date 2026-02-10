@@ -1,5 +1,3 @@
-use std::str::from_utf8;
-
 use esp32_nimble::{uuid128, BLEDevice, BLEScan};
 use esp_idf_hal::{delay, task::block_on};
 
@@ -11,6 +9,7 @@ pub fn send_command(
     msg: &str,
     delay: &esp_idf_hal::delay::Delay,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Disable async, as not currently async
     block_on(async {
         let ble_device = BLEDevice::take();
         let mut ble_scan = BLEScan::new();
@@ -21,7 +20,6 @@ pub fn send_command(
             .window(99)
             .start(ble_device, 10000, |device, data| {
                 data.name()
-                    .and_then(|name| from_utf8(name).ok())
                     .filter(|&name| name == DEVICE_NAME)
                     .map(|_| *device)
             })
@@ -35,6 +33,7 @@ pub fn send_command(
 
         characteristic.write_value(msg.as_bytes(), true).await?;
 
+        // Wait to avoid exiting before message is sent
         delay::Delay::delay_ms(&delay, 5000);
         client.disconnect()?;
 
