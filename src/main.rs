@@ -245,14 +245,16 @@ fn main() {
                     Rectangle::new(Point { x: 0, y: 0 }, Size { width: FRAME_WIDTH, height: FRAME_HEIGHT }).draw_styled(&PrimitiveStyle::with_fill(Rgb565::BLACK), &mut display).unwrap();
                     Text::with_alignment(text.as_str(), center, MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN), embedded_graphics::text::Alignment::Center).draw(&mut display).unwrap();
 
-                    if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
-                        eprintln!("BLE error: {}", e);
-                    }
+                    
+                        if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
+                            eprintln!("BLE error: {}", e);
+                        }
+                    
 
                     Delay::delay_ms(&Delay::new_default(), 1000);
                 }
                 Err(err) => {
-                    blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
+                    // blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
 
                     log::error!("No qrcode found: {}", err);
                     
@@ -261,7 +263,6 @@ fn main() {
             
         }
             
-
         
         framecount += 1;
         if framecount > DETECT_INTERVAL_FRAMES { framecount = 1; }
