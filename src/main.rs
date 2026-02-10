@@ -187,11 +187,6 @@ fn main() {
 
         rgb_fb[..frame_buffer.data().len()].copy_from_slice(frame_buffer.data());
 
-        // TODO: Change to get greyscale. Not correct but working
-        grayscale = rgb_fb.chunks(2).map(|x| x[0]).collect();
-
-
-
         drop(frame_buffer);
 
         let radius = 100;
@@ -227,9 +222,15 @@ fn main() {
         
 
         if framecount % DETECT_INTERVAL_FRAMES == 0 {
+
+            // TODO: Change to get greyscale. Not correct but working
+            for (i, v) in rgb_fb.chunks(2).enumerate() {
+                grayscale[i] = v[0];
+            }
+
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
-                grayscale.to_vec(),
+                grayscale.clone(),
                 FRAME_WIDTH,
                 FRAME_HEIGHT,
                 Some(rxing::BarcodeFormat::QR_CODE),
@@ -241,6 +242,7 @@ fn main() {
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
                     
+                    Rectangle::new(Point { x: 0, y: 0 }, Size { width: FRAME_WIDTH, height: FRAME_HEIGHT }).draw_styled(&PrimitiveStyle::with_fill(Rgb565::BLACK), &mut display).unwrap();
                     Text::with_alignment(text.as_str(), center, MonoTextStyle::new(&FONT_10X20, Rgb565::GREEN), embedded_graphics::text::Alignment::Center).draw(&mut display).unwrap();
 
                     if let Err(e) = ble::send_command(text.as_str(), &Delay::default()) {
@@ -248,7 +250,6 @@ fn main() {
                     }
 
                     Delay::delay_ms(&Delay::new_default(), 1000);
-                    return;
                 }
                 Err(err) => {
                     blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
