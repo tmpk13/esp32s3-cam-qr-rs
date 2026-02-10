@@ -284,13 +284,14 @@ fn main() {
                     // Check for format
                     if valid_code {
                         tx.send(text.clone()).unwrap();
-                    
+
                         log::info!("For BLE connection");
 
+                        let mut loop_count = 0;
                         loop {
                             match done_rx.try_recv() {
                                 Ok(Ok(())) => {
-                                    // Success
+                                    // Success message sent
                                     log::info!("BLE sent OK");
                                     break;
                                 }
@@ -302,11 +303,24 @@ fn main() {
                                 Err(mpsc::TryRecvError::Empty) => {
                                     // No response loop
                                     log::info!("Waiting...");
+
+                                    Rectangle::new(
+                                        Point { x: 0, y: 0 },
+                                        Size {
+                                            width: loop_count * 240 / 10,
+                                            height: FRAME_HEIGHT,
+                                        },
+                                    )
+                                    .draw_styled(
+                                        &PrimitiveStyle::with_fill(Rgb565::BLACK),
+                                        &mut display,
+                                    )
+                                    .unwrap();
                                     Delay::delay_ms(&Delay::default(), 1000);
+                                    loop_count += 1;
                                 }
                                 Err(mpsc::TryRecvError::Disconnected) => {
                                     // Ble disconnected
-
                                     break;
                                 }
                             }
