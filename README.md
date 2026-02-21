@@ -9,10 +9,20 @@ Modifed wrapper: https://github.com/tmpk13/esp-camera-rs/tree/Config-Access
 
 ---
 
+In the current system this module acts as the main controller board communicating with the lock boards over BLE.
+The authentication methods include Keypad, BLE, and QR code.
 
+The design used a PIR sensor for low power scanning. Dectecting when a user is infront of the device ready to authenticate.
 
 ## Custom printed PCB
-<img width="100" height="500" alt="image" src="https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260221_220432174.RAW-01.COVER~2.jpg?raw=true" />
+Printed circuit board with JLCPCB  
+<img width="200" height="400" alt="image" src="https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260221_220432174.RAW-01.COVER~2.jpg?raw=true" />
+<img width="200" height="400" alt="image" src="https://github.com/user-attachments/assets/a72c7769-4f03-4b61-afc9-129b24a1931a" />
+
+
+## 3D printed case (In Progress)
+Prototype pannel for lock
+<img width="800" height="611" alt="image" src="https://github.com/user-attachments/assets/912084a3-d3f5-407d-9352-82fffa5ea538" />
 
 ---
 
