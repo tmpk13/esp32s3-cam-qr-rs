@@ -38,7 +38,7 @@ Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template
 
 
 ## Features
-`loop`: Attempt detection once every *3 seconds*.
+`loop`: Attempt detection once every interval.
 
 <img width="391" height="253" alt="image" src="https://github.com/user-attachments/assets/22eb83cf-2e0b-4efc-8aba-e066f9c0d849" />
 
