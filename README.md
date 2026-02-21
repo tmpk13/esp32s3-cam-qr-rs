@@ -14,7 +14,7 @@ The authentication methods include Keypad, BLE, and QR code.
 
 The design uses a PIR sensor for low power scanning. Dectecting when a user is infront of the device ready to authenticate.
 
-[Gif of scanning a qr code](https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260221_222057871~3.gif?raw=true)
+![Gif of scanning a qr code](https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260221_222057871~3.gif?raw=true)
 
 
 ## Custom printed PCB
@@ -24,8 +24,10 @@ Printed circuit board with JLCPCB
 
 
 ## 3D printed case (In Progress)
-Prototype pannel for lock
+Prototype pannel for lock  
 <img width="800" height="611" alt="image" src="https://github.com/user-attachments/assets/912084a3-d3f5-407d-9352-82fffa5ea538" />
+<img width="200" height="400" alt="image" src="https://github.com/user-attachments/assets/19ea6202-7b73-4124-9d27-1f7d7f22c3f9" />
+
 
 ---
 
