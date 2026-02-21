@@ -9,6 +9,14 @@ Modifed wrapper: https://github.com/tmpk13/esp-camera-rs/tree/Config-Access
 
 ---
 
+
+
+## Custom printed PCB
+<img width="100" height="500" alt="image" src="https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260221_220432174.RAW-01.COVER~2.jpg?raw=true" />
+
+---
+
+
 <br>
 
 Initalized with [**esp-rs** template](https://github.com/esp-rs/esp-idf-template) `cargo generate esp-rs/esp-idf-template cargo`
