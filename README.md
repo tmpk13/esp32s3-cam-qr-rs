@@ -84,4 +84,4 @@ Formatting with `cargo +esp fmt`
 
 ---
 
-#### Claude models were used for some debuging of errors <br> No code or output was used directely or copied from LLM output
+#### Claude models were used for some debugging of errors <br>

@@ -19,6 +19,7 @@ use embedded_graphics::{
     primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable},
     text::Text,
     Drawable,
+
 };
 
 use esp_idf_hal::{
@@ -29,6 +30,7 @@ use esp_idf_hal::{
     peripherals::Peripherals,
     spi::{SpiConfig, SpiDeviceDriver, SpiDriverConfig},
     units::FromValueType,
+    delay::FreeRtos,
 };
 use mipidsi::{models::GC9A01, Builder};
 
@@ -53,11 +55,12 @@ use std::sync::mpsc;
 fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, message: &str, count: u32, max: u32, center: Point)
 where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug 
 {
+    let progress = (count) * 240 / max;
     // display.clear(Rgb565::WHITE).unwrap();
     Rectangle::new(
-        Point { x: 10, y: ((FRAME_HEIGHT-10)/2) as i32 },
+        Point { x: ((FRAME_WIDTH - max)  /2 ) as i32, y: ((FRAME_HEIGHT-10)/2) as i32 },
         Size {
-            width: (count) * 240 / max,
+            width: if progress < max { progress } else {max},
             height: 20,
         },
     )
@@ -356,7 +359,7 @@ fn main() {
                         }
                     }
 
-                    Delay::delay_ms(&Delay::new_default(), 5000);
+                    Delay::delay_ms(&Delay::new_default(), 3000);
                 }
                 Err(err) => {
                     // blink_led(&mut led, QR_SCAN_LED_DELAY_MS, QR_SCAN_LED_BLINK_COUNT);
@@ -377,5 +380,6 @@ fn main() {
         if !cfg!(feature = "loop") {
             break;
         }
+        FreeRtos::delay_ms(1);
     }
 }

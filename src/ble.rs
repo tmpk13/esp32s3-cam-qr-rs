@@ -1,7 +1,7 @@
 use esp32_nimble::{uuid128, BLEDevice, BLEScan};
 use esp_idf_hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_hal::{
-    delay::{self, Delay},
+    delay::Delay,
     task::block_on,
 };
 use std::sync::mpsc;
@@ -11,9 +11,9 @@ const DEVICE_NAME: &str = "esp-msg";
 pub fn start_ble_task(rx: mpsc::Receiver<String>, done_tx: mpsc::Sender<Result<(), String>>) {
     ThreadSpawnConfiguration {
         name: Some(b"BLE\0"),
-        stack_size: 8192,
+        stack_size: 12288,
         priority: 5,
-        pin_to_core: Some(esp_idf_hal::cpu::Core::Core0),
+        pin_to_core: Some(esp_idf_hal::cpu::Core::Core1),
         ..Default::default()
     }
     .set()
@@ -45,13 +45,19 @@ pub fn send_command(ble_device: &BLEDevice, msg: &str) -> Result<(), Box<dyn std
         let mut ble_scan = BLEScan::new();
 
         let device = ble_scan
-            .active_scan(true)
+            .active_scan(false)
             .interval(100)
             .window(99)
             .start(ble_device, 10000, |device, data| {
-                data.name()
-                    .filter(|&name| name == DEVICE_NAME)
-                    .map(|_| *device)
+                let name = data.name();
+                let has_uuid = data.service_uuids()
+                    .any(|u| u == uuid128!("921a6069-4357-4287-a9af-fd386fc0dcad"));
+                log::info!("Scan: name={:?} has_uuid={}", name, has_uuid);
+                let found = name.map(|n| n == DEVICE_NAME).unwrap_or(false) || has_uuid;
+                if found {
+                    log::info!("Found target device: {:?}", device.addr());
+                }
+                found.then(|| *device)
             })
             .await?
             .ok_or("Device not found during scan")?;
@@ -62,10 +68,9 @@ pub fn send_command(ble_device: &BLEDevice, msg: &str) -> Result<(), Box<dyn std
         let characteristic = service.get_characteristic(uuid128!("1ad4aa0c-5cb7-4be3-9916-9c63f19c03fd")).await?;
 
         characteristic.write_value(msg.as_bytes(), true).await?;
-
-        // Wait to avoid exiting before message is sent
-        delay::Delay::delay_ms(&Delay::default(), 2000);
-        client.disconnect()?;
+        if let Err(e) = client.disconnect() {
+            log::warn!("Disconnect error (write succeeded): {}", e);
+        }
 
         Ok(())
     })
