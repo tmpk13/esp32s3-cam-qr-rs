@@ -38,7 +38,7 @@ const QR_FOUND_LED_BLINK_COUNT: u8 = 10;
 const QR_FOUND_LED_DELAY_MS: u32 = 50;
 
 // QR code scanning delay
-const DETECT_INTERVAL_FRAMES: u32 = 30;
+const DETECT_INTERVAL_FRAMES: u32 = 20;
 
 // Constants for the qrcode scanner set to equal frame dimensions
 // FRAME_WIDTH and FRAME_HEIGHT must match dimensions of FRAMESIZE
@@ -118,6 +118,7 @@ fn main() {
     let mut display = Builder::new(GC9A01, di)
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
         .color_order(mipidsi::options::ColorOrder::Bgr)
+        .orientation(mipidsi::options::Orientation { rotation: mipidsi::options::Rotation::Deg90, mirrored: false })
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
@@ -200,7 +201,7 @@ fn main() {
         esp_idf_sys::ledc_channel_t_LEDC_CHANNEL_0,
         esp_camera_rs::PIXFORMAT_RGB565,   // Greyscale for QR code
         FRAMESIZE,                         // 240x240 frame size
-        20,                                // JPEG Quality
+        1,                                // JPEG Quality
         1,                                 // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_LATEST, // Grab mode: latest
     )
