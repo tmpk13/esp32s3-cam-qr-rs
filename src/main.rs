@@ -246,29 +246,29 @@ fn main() {
 
         drop(frame_buffer);
 
-        let radius = 115;
+        // let radius = 115;
         let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
-        let progress = ((360.0 / DETECT_INTERVAL_FRAMES as f32) * framecount as f32).deg();
+        // let progress = ((360.0 / DETECT_INTERVAL_FRAMES as f32) * framecount as f32).deg();
 
-        // Generate arc
-        let arc = Arc::new(
-            Point {
-                x: (FRAME_WIDTH / 2 - radius) as i32,
-                y: (FRAME_HEIGHT / 2 - radius) as i32,
-            },
-            radius * 2,
-            -90.0.deg(),
-            progress,
-        )
-        .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 10));
+        // // Generate arc
+        // let arc = Arc::new(
+        //     Point {
+        //         x: (FRAME_WIDTH / 2 - radius) as i32,
+        //         y: (FRAME_HEIGHT / 2 - radius) as i32,
+        //     },
+        //     radius * 2,
+        //     -90.0.deg(),
+        //     progress,
+        // )
+        // .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 10));
 
-        // Add progress bar to the image
-        arc.pixels().for_each(|Pixel(point, color)| {
-            let index = ((point.y * FRAME_WIDTH as i32 + point.x) * 2) as usize;
-            let color_u16 = color.into_storage();
-            rgb_fb[index] = (color_u16 >> 8) as u8;
-            rgb_fb[index + 1] = (color_u16 & 0xFF) as u8;
-        });
+        // // Add progress bar to the image
+        // arc.pixels().for_each(|Pixel(point, color)| {
+        //     let index = ((point.y * FRAME_WIDTH as i32 + point.x) * 2) as usize;
+        //     let color_u16 = color.into_storage();
+        //     rgb_fb[index] = (color_u16 >> 8) as u8;
+        //     rgb_fb[index + 1] = (color_u16 & 0xFF) as u8;
+        // });
 
         let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
 
