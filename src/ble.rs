@@ -6,8 +6,6 @@ use esp_idf_hal::{
 };
 use std::sync::mpsc;
 
-const SERVICE_UUID: &str = "921a6069-4357-4287-a9af-fd386fc0dcad";
-const MSG_CHAR_UUID: &str = "1ad4aa0c-5cb7-4be3-9916-9c63f19c03fd";
 const DEVICE_NAME: &str = "esp-msg";
 
 pub fn start_ble_task(rx: mpsc::Receiver<String>, done_tx: mpsc::Sender<Result<(), String>>) {
@@ -60,8 +58,8 @@ pub fn send_command(ble_device: &BLEDevice, msg: &str) -> Result<(), Box<dyn std
 
         let mut client = ble_device.new_client();
         client.connect(&device.addr()).await?;
-        let service = client.get_service(uuid128!(SERVICE_UUID)).await?;
-        let characteristic = service.get_characteristic(uuid128!(MSG_CHAR_UUID)).await?;
+        let service = client.get_service(uuid128!("921a6069-4357-4287-a9af-fd386fc0dcad")).await?;
+        let characteristic = service.get_characteristic(uuid128!("1ad4aa0c-5cb7-4be3-9916-9c63f19c03fd")).await?;
 
         characteristic.write_value(msg.as_bytes(), true).await?;
 
