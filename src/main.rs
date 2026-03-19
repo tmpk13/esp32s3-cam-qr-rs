@@ -16,7 +16,7 @@ use embedded_graphics::{
     mono_font::{iso_8859_15::FONT_10X20, MonoTextStyle},
     pixelcolor::{Rgb565},
     prelude::{Point, Primitive, RgbColor, *},
-    primitives::{Arc, PrimitiveStyle, Rectangle, StyledDrawable},
+    primitives::{PrimitiveStyle, Rectangle, StyledDrawable},
     text::Text,
     Drawable,
 
@@ -26,13 +26,18 @@ use esp_idf_hal::{
     delay::Delay,
     delay::Ets,
     gpio::AnyIOPin,
-    gpio::{Output, PinDriver},
+    gpio::{InterruptType, Output, PinDriver, Pull},
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     spi::{SpiConfig, SpiDeviceDriver, SpiDriverConfig},
     units::FromValueType,
     delay::FreeRtos,
 };
+
+use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use embedded_hal_bus::i2c::RefCellDevice;
 use mipidsi::{models::GC9A01, Builder};
 
 
@@ -56,11 +61,21 @@ const MCP_ADDR: u8 = 0x20;
 // Number of digits the keypad code must be (matches QR code validation)
 const KEYPAD_CODE_LEN: usize = 7;
 
+// Wipe partially-entered keypad code after this many seconds of inactivity
+const KEYPAD_TIMEOUT_SECS: u64 = 5;
+
+// MCP23017 poll interval (ms) — lower rate reduces I2C contention with VL53L0X
+const MCP_POLL_MS: u32 = 150;
+
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-// Screen blanks after this many seconds of no PIR activity
-const PIR_SLEEP_SECS: u64 = 40;
+// Screen blanks after this many seconds of no activity
+const PIR_SLEEP_SECS: u64 = 10;
+
+// VL53L0X: treat as "present" if something is closer than this (mm)
+const PRESENCE_RANGE_MM: u16 = 500;
+
 
 
 fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, message: &str, count: u32, max: u32, center: Point)
@@ -94,9 +109,9 @@ where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug
 /// Read the 9 keypad buttons from MCP23017 GPIOA/GPIOB.
 /// Returns a 9-bit value: bits 0-7 = GA0-GA7, bit 8 = GB0.
 /// Active low: 0 = button pressed, 1 = released.
-fn read_mcp_buttons(i2c: &mut I2cDriver<'_>) -> u16 {
+fn read_mcp_buttons<I: embedded_hal::i2c::I2c>(i2c: &mut I) -> u16 {
     let mut buf = [0u8; 2];
-    if i2c.write_read(MCP_ADDR, &[0x12], &mut buf, 1000).is_ok() {
+    if i2c.write_read(MCP_ADDR, &[0x12], &mut buf).is_ok() {
         let gpioa = buf[0] as u16;
         let gpiob = (buf[1] & 0x01) as u16;
         (gpiob << 8) | gpioa
@@ -109,8 +124,8 @@ fn read_mcp_buttons(i2c: &mut I2cDriver<'_>) -> u16 {
 /// GA0–GA7 → '1'–'8', GB0 → '9'
 fn bit_to_digit(bit: u8) -> char {
     match bit {
-        0 => '1', 1 => '2', 2 => '3', 3 => '4',
-        4 => '5', 5 => '6', 6 => '7', 7 => '8',
+        0 => '1', 1 => '4', 2 => '7', 3 => '2',
+        4 => '5', 5 => '8', 6 => '3', 7 => '6',
         8 => '9',
         _ => '?',
     }
@@ -157,7 +172,7 @@ fn main() {
     let mut display = Builder::new(GC9A01, di)
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
         .color_order(mipidsi::options::ColorOrder::Bgr)
-        .orientation(mipidsi::options::Orientation { rotation: mipidsi::options::Rotation::Deg270, mirrored: false })
+        .orientation(mipidsi::options::Orientation { rotation: mipidsi::options::Rotation::Deg90, mirrored: false })
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
@@ -177,8 +192,16 @@ fn main() {
         };
     }
 
-    // PIR sensor on D0 / GPIO1 — HIGH when motion detected
-    let pir = PinDriver::input(peripherals.pins.gpio1).unwrap();
+    // Shared wake flag set by the keyboard INT A ISR
+    let wake_flag = Arc::new(AtomicBool::new(false));
+
+    // MCP23017 INT A on D6 / GPIO43 — falling edge interrupt (active-low, fires on any key change)
+    let mut int_a = PinDriver::input(peripherals.pins.gpio43).unwrap();
+    int_a.set_pull(Pull::Up).unwrap(); // pull-up in case INT A output is open-drain
+    int_a.set_interrupt_type(InterruptType::NegEdge).unwrap();
+    let kbd_flag = wake_flag.clone();
+    unsafe { int_a.subscribe(move || { kbd_flag.store(true, Ordering::Relaxed); }).unwrap(); }
+    int_a.enable_interrupt().unwrap();
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
@@ -251,6 +274,10 @@ fn main() {
     )
     .unwrap();
 
+    // Camera init drives GPIO5 (RESET) and GPIO6 (PWDN) as push-pull outputs.
+    // Give the GPIO matrix time to settle before I2cDriver reclaims them.
+    FreeRtos::delay_ms(500);
+
     // MCP23017 I2C on D4/GPIO5 (SDA) and D5/GPIO6 (SCL).
     // The camera consumed gpio5 and gpio6 as "unused" (no electrical use), so we
     // recreate them here with unsafe AnyIOPin to configure the I2C peripheral.
@@ -269,10 +296,39 @@ fn main() {
     // IODIRB = 0x01 : GB0 input           (key 9), rest don't care
     // GPPUA  = 0xFF : pull-ups on GA0-GA7 (buttons connect pin to GND)
     // GPPUB  = 0x01 : pull-up on GB0
-    i2c.write(MCP_ADDR, &[0x00, 0xFF], 1000).unwrap();
-    i2c.write(MCP_ADDR, &[0x01, 0x01], 1000).unwrap();
-    i2c.write(MCP_ADDR, &[0x0C, 0xFF], 1000).unwrap();
-    i2c.write(MCP_ADDR, &[0x0D, 0x01], 1000).unwrap();
+    let mcp_ok =
+        i2c.write(MCP_ADDR, &[0x00, 0xFF], 1000).is_ok() // IODIRA  = all inputs
+        && i2c.write(MCP_ADDR, &[0x01, 0x01], 1000).is_ok() // IODIRB  = bit0 input
+        && i2c.write(MCP_ADDR, &[0x04, 0xFF], 1000).is_ok() // GPINTENA
+        && i2c.write(MCP_ADDR, &[0x05, 0x01], 1000).is_ok() // GPINTENB
+        && i2c.write(MCP_ADDR, &[0x0C, 0xFF], 1000).is_ok() // GPPUA   = pull-ups GA0-GA7
+        && i2c.write(MCP_ADDR, &[0x0D, 0x01], 1000).is_ok(); // GPPUB   = pull-up GB0
+    if !mcp_ok {
+        log::warn!("MCP23017 config failed — keypad disabled");
+    }
+
+    // Share i2c0 between MCP23017 and VL53L0X using RefCell.
+    // VL53L0X SDA = GPIO5 (D4), SCL = GPIO6 (D5) — same bus as MCP23017.
+    let i2c_bus = RefCell::new(i2c);
+    let mut mcp_dev = RefCellDevice::new(&i2c_bus);
+
+    // Give the VL53L0X time to boot and the I2C bus time to settle after MCP config.
+    FreeRtos::delay_ms(1000);
+
+    // I2C bus scan — logs every address that ACKs (MCP23017=0x20, VL53L0X=0x29 expected)
+    {
+        let mut bus = i2c_bus.borrow_mut();
+        for addr in 0x08u8..=0x77 {
+            if bus.write(addr, &[], 10).is_ok() {
+                log::info!("I2C scan: device at 0x{:02X}", addr);
+            }
+        }
+    }
+
+    let mut tof = vl53l0x::VL53L0x::new(RefCellDevice::new(&i2c_bus))
+        .map_err(|e| log::warn!("VL53L0X init failed: {:?}", e))
+        .ok();
+    log::info!("VL53L0X init: {}", if tof.is_some() { "OK" } else { "FAILED" });
 
     let mut framecount: u32 = 0;
     // Buffer for rxing QR code luma detect
@@ -292,36 +348,54 @@ fn main() {
     let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
 
     // Keypad state — tracks digits entered so far and whether we are in keypad mode
-    let mut prev_gpio: u16 = read_mcp_buttons(&mut i2c); // Initialise from real state
+    let mut prev_gpio: u16 = if mcp_ok { read_mcp_buttons(&mut mcp_dev) } else { 0x01FF };
     let mut entered_code = String::new();
     let mut in_keypad_mode = false;
+    let mut last_keypress: Option<Instant> = None;
 
     // PIR / screen-sleep state
     let mut last_activity = Instant::now();
 
     // If loop feature is enabled attempt to detect every interval
     loop {
-        // --- PIR check: update activity timestamp and handle screen sleep ---
-        if pir.is_high() {
+        // --- Keyboard INT A interrupt wake flag ---
+        if wake_flag.load(Ordering::Relaxed) {
+            wake_flag.store(false, Ordering::Relaxed);
             last_activity = Instant::now();
         }
 
         if last_activity.elapsed() > Duration::from_secs(PIR_SLEEP_SECS) {
-            // Blank the screen and wait until PIR fires again
+            // Blank the screen and wait for presence (VL53L0X) or a keypress (INT A interrupt).
+            int_a.enable_interrupt().unwrap();
             display.clear(Rgb565::BLACK).unwrap();
-            log::info!("Screen sleep: waiting for PIR");
+            log::info!("Screen sleep: waiting for presence or keypress");
             loop {
-                FreeRtos::delay_ms(100);
-                if pir.is_high() {
+                // Check keyboard interrupt wake
+                if wake_flag.load(Ordering::Relaxed) {
+                    wake_flag.store(false, Ordering::Relaxed);
                     last_activity = Instant::now();
-                    log::info!("PIR triggered: waking screen");
+                    int_a.enable_interrupt().unwrap();
+                    log::info!("Woken by keypress interrupt");
                     break;
                 }
+                // Check VL53L0X for presence (~33 ms per reading)
+                if let Some(ref mut t) = tof {
+                    if let Ok(dist) = t.read_range_single_millimeters_blocking() {
+                        log::info!("Sleep poll range: {}mm", dist);
+                        if dist < PRESENCE_RANGE_MM {
+                            last_activity = Instant::now();
+                            int_a.enable_interrupt().unwrap();
+                            log::info!("Woken by presence ({}mm)", dist);
+                            break;
+                        }
+                    }
+                }
+                FreeRtos::delay_ms(10);
             }
         }
 
         // --- Poll MCP23017 for new button presses ---
-        let current_gpio = read_mcp_buttons(&mut i2c);
+        let current_gpio = if mcp_ok { read_mcp_buttons(&mut mcp_dev) } else { 0x01FF };
         let new_presses = prev_gpio & !current_gpio; // Bits that just went high→low (active low)
         prev_gpio = current_gpio;
 
@@ -331,6 +405,7 @@ fn main() {
                 if (new_presses >> bit) & 1 == 1 {
                     in_keypad_mode = true;
                     last_activity = Instant::now();
+                    last_keypress = Some(Instant::now());
                     let digit = bit_to_digit(bit);
                     entered_code.push(digit);
 
@@ -386,8 +461,10 @@ fn main() {
                             display_text!("Invalid code", Rgb565::RED);
                             Delay::delay_ms(&Delay::default(), 2000);
                         }
+                        last_activity = Instant::now(); // BLE result counts as activity
                         entered_code.clear();
                         in_keypad_mode = false;
+                        last_keypress = None;
                     }
                     break; // Only process the first pressed bit per poll
                 }
@@ -396,11 +473,17 @@ fn main() {
 
         // While in keypad mode skip camera capture and QR scanning
         if in_keypad_mode {
-            FreeRtos::delay_ms(50);
-            if !cfg!(feature = "loop") {
-                break;
+            // Wipe the code if no key pressed within the timeout window
+            if last_keypress.map_or(false, |t| t.elapsed() > Duration::from_secs(KEYPAD_TIMEOUT_SECS)) {
+                log::info!("Keypad timeout — clearing entered code");
+                entered_code.clear();
+                in_keypad_mode = false;
+                last_keypress = None;
+                display.clear(Rgb565::BLACK).unwrap();
+            } else {
+                FreeRtos::delay_ms(MCP_POLL_MS);
+                continue;
             }
-            continue;
         }
 
         // Add match for button vs scan loop
@@ -418,7 +501,9 @@ fn main() {
             }
         };
 
-        rgb_fb[..frame_buffer.data().len()].copy_from_slice(frame_buffer.data());
+        let frame_len = frame_buffer.data().len();
+        rgb_fb[..frame_len].copy_from_slice(frame_buffer.data());
+        let actual_height = (frame_len as u32 / 2 / FRAME_WIDTH).min(FRAME_HEIGHT);
 
         drop(frame_buffer);
 
@@ -445,23 +530,45 @@ fn main() {
         //     rgb_fb[index + 1] = (color_u16 & 0xFF) as u8;
         // });
 
-        let image = ImageRaw::<Rgb565>::new(&rgb_fb, FRAME_WIDTH);
+        // Counter-rotate camera data 180° so the image appears unchanged on the
+        // display now that the display orientation was flipped from Deg270 → Deg90.
+        let pixel_count = (FRAME_WIDTH * actual_height) as usize;
+        for i in 0..(pixel_count / 2) {
+            let j = pixel_count - 1 - i;
+            rgb_fb.swap(i * 2, j * 2);
+            rgb_fb.swap(i * 2 + 1, j * 2 + 1);
+        }
+
+        let image = ImageRaw::<Rgb565>::new(&rgb_fb[..frame_len], FRAME_WIDTH);
 
         Image::new(&image, Point::zero())
             .draw(&mut display)
             .unwrap();
 
         if framecount % DETECT_INTERVAL_FRAMES == 0 {
+            // VL53L0X presence check — update last_activity if someone is nearby
+            if let Some(ref mut t) = tof {
+                match t.read_range_single_millimeters_blocking() {
+                    Ok(dist) => {
+                        log::info!("Range: {}mm", dist);
+                        if dist < PRESENCE_RANGE_MM {
+                            last_activity = Instant::now();
+                        }
+                    }
+                    Err(_) => log::warn!("VL53L0X read failed"),
+                }
+            }
+
             // TODO: Change to get greyscale. Not correct but working
-            for (i, v) in rgb_fb.chunks(2).enumerate() {
+            for (i, v) in rgb_fb[..frame_len].chunks(2).enumerate() {
                 grayscale[i] = v[0];
             }
 
             // Attempt to detect/decode QR from framebuffer
             let qrcode = rxing::helpers::detect_in_luma(
-                grayscale.clone(),
+                grayscale[..pixel_count].to_vec(),
                 FRAME_WIDTH,
-                FRAME_HEIGHT,
+                actual_height,
                 Some(rxing::BarcodeFormat::QR_CODE),
             );
             // Handel successful detection and no qrcode found cases
@@ -555,10 +662,8 @@ fn main() {
 
         log::info!("Frame {}", framecount);
 
-        // Set looped to true
-        if !cfg!(feature = "loop") {
-            break;
-        }
+        
+        
         FreeRtos::delay_ms(1);
     }
 }
