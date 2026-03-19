@@ -27,6 +27,7 @@ use esp_idf_hal::{
     delay::Ets,
     gpio::AnyIOPin,
     gpio::{Output, PinDriver},
+    i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
     spi::{SpiConfig, SpiDeviceDriver, SpiDriverConfig},
     units::FromValueType,
@@ -49,11 +50,17 @@ const FRAME_WIDTH: u32 = 240;
 const FRAME_HEIGHT: u32 = 240;
 const FRAMESIZE: esp_idf_sys::camera::framesize_t = esp_camera_rs::FRAMESIZE_240X240;
 
+// MCP23017 I2C address (A0=A1=A2=GND → default 0x20)
+const MCP_ADDR: u8 = 0x20;
+
+// Number of digits the keypad code must be (matches QR code validation)
+const KEYPAD_CODE_LEN: usize = 7;
+
 use std::sync::mpsc;
 
 
 fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, message: &str, count: u32, max: u32, center: Point)
-where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug 
+where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug
 {
     let progress = (count) * 240 / max;
     // display.clear(Rgb565::WHITE).unwrap();
@@ -78,6 +85,31 @@ where <T as embedded_graphics::draw_target::DrawTarget>::Error: std::fmt::Debug
     )
     .draw(display)
     .unwrap();
+}
+
+/// Read the 9 keypad buttons from MCP23017 GPIOA/GPIOB.
+/// Returns a 9-bit value: bits 0-7 = GA0-GA7, bit 8 = GB0.
+/// Active low: 0 = button pressed, 1 = released.
+fn read_mcp_buttons(i2c: &mut I2cDriver<'_>) -> u16 {
+    let mut buf = [0u8; 2];
+    if i2c.write_read(MCP_ADDR, &[0x12], &mut buf, 1000).is_ok() {
+        let gpioa = buf[0] as u16;
+        let gpiob = (buf[1] & 0x01) as u16;
+        (gpiob << 8) | gpioa
+    } else {
+        0x01FF // All released on I2C error
+    }
+}
+
+/// Map a GPIO bit index (0–8) to the keypad digit character it represents.
+/// GA0–GA7 → '1'–'8', GB0 → '9'
+fn bit_to_digit(bit: u8) -> char {
+    match bit {
+        0 => '1', 1 => '2', 2 => '3', 3 => '4',
+        4 => '5', 5 => '6', 6 => '7', 7 => '8',
+        8 => '9',
+        _ => '?',
+    }
 }
 
 
@@ -121,7 +153,7 @@ fn main() {
     let mut display = Builder::new(GC9A01, di)
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
         .color_order(mipidsi::options::ColorOrder::Bgr)
-        .orientation(mipidsi::options::Orientation { rotation: mipidsi::options::Rotation::Deg90, mirrored: false })
+        .orientation(mipidsi::options::Orientation { rotation: mipidsi::options::Rotation::Deg270, mirrored: false })
         .reset_pin(rst)
         .init(&mut Ets)
         .unwrap();
@@ -182,9 +214,11 @@ fn main() {
     GPIO48	Camera video data pin (Y9)
     */
     // Setup xiao esp32s3 pins for camera
+    // Note: gpio6 and gpio5 are passed as "Unused" by the camera library.
+    // They are reclaimed below via unsafe AnyIOPin for MCP23017 I2C.
     let camera = esp_camera_rs::Camera::new(
-        peripherals.pins.gpio6,  // Unused
-        peripherals.pins.gpio5,  // Unused
+        peripherals.pins.gpio6,  // Unused (reclaimed for MCP23017 SCK via unsafe I2C below)
+        peripherals.pins.gpio5,  // Unused (reclaimed for MCP23017 SDA via unsafe I2C below)
         peripherals.pins.gpio10, // gpio10 "Camera related clock pin"
         peripherals.pins.gpio15, // gpio15 pin_d0 Y2
         peripherals.pins.gpio17, // gpio17 pin_d1 Y3
@@ -210,6 +244,29 @@ fn main() {
     )
     .unwrap();
 
+    // MCP23017 I2C on D4/GPIO5 (SDA) and D5/GPIO6 (SCL).
+    // The camera consumed gpio5 and gpio6 as "unused" (no electrical use), so we
+    // recreate them here with unsafe AnyIOPin to configure the I2C peripheral.
+    let i2c_sda = unsafe { AnyIOPin::new(5) };
+    let i2c_scl = unsafe { AnyIOPin::new(6) };
+    let mut i2c = I2cDriver::new(
+        peripherals.i2c0,
+        i2c_sda,
+        i2c_scl,
+        &I2cConfig::new().baudrate(100u32.kHz().into()),
+    )
+    .unwrap();
+
+    // Configure MCP23017:
+    // IODIRA = 0xFF : GA0-GA7 all inputs  (keys 1-8)
+    // IODIRB = 0x01 : GB0 input           (key 9), rest don't care
+    // GPPUA  = 0xFF : pull-ups on GA0-GA7 (buttons connect pin to GND)
+    // GPPUB  = 0x01 : pull-up on GB0
+    i2c.write(MCP_ADDR, &[0x00, 0xFF], 1000).unwrap();
+    i2c.write(MCP_ADDR, &[0x01, 0x01], 1000).unwrap();
+    i2c.write(MCP_ADDR, &[0x0C, 0xFF], 1000).unwrap();
+    i2c.write(MCP_ADDR, &[0x0D, 0x01], 1000).unwrap();
+
     let mut framecount: u32 = 0;
     // Buffer for rxing QR code luma detect
     let mut grayscale = vec![0u8; (FRAME_WIDTH * FRAME_HEIGHT) as usize];
@@ -225,8 +282,97 @@ fn main() {
     // Start ble task from ble module
     ble::start_ble_task(rx, done_tx);
 
+    let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
+
+    // Keypad state — tracks digits entered so far and whether we are in keypad mode
+    let mut prev_gpio: u16 = read_mcp_buttons(&mut i2c); // Initialise from real state
+    let mut entered_code = String::new();
+    let mut in_keypad_mode = false;
+
     // If loop feature is enabled attempt to detect every interval
     loop {
+        // --- Poll MCP23017 for new button presses ---
+        let current_gpio = read_mcp_buttons(&mut i2c);
+        let new_presses = prev_gpio & !current_gpio; // Bits that just went high→low (active low)
+        prev_gpio = current_gpio;
+
+        if new_presses != 0 {
+            // Handle the first newly pressed button
+            for bit in 0..9u8 {
+                if (new_presses >> bit) & 1 == 1 {
+                    in_keypad_mode = true;
+                    let digit = bit_to_digit(bit);
+                    entered_code.push(digit);
+
+                    // Show the full entered code centred on a black screen
+                    display.clear(Rgb565::BLACK).unwrap();
+                    Text::with_alignment(
+                        entered_code.as_str(),
+                        center,
+                        MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE),
+                        embedded_graphics::text::Alignment::Center,
+                    )
+                    .draw(&mut display)
+                    .unwrap();
+
+                    log::info!("Key pressed: '{}', code so far: {}", digit, entered_code);
+
+                    if entered_code.len() >= KEYPAD_CODE_LEN {
+                        // Code is complete — same logic as QR code path
+                        let valid_code = entered_code.bytes().all(|c| c.is_ascii_digit());
+                        if valid_code {
+                            tx.send("open_close_servo".to_string()).unwrap();
+
+                            log::info!("Keypad code accepted, awaiting BLE");
+                            display.clear(Rgb565::WHITE).unwrap();
+
+                            let mut loop_count = 0u32;
+                            loop {
+                                match done_rx.try_recv() {
+                                    Ok(Ok(())) => {
+                                        display.clear(Rgb565::WHITE).unwrap();
+                                        display_text!("Success", Rgb565::GREEN);
+                                        Delay::delay_ms(&Delay::default(), 1000);
+                                        log::info!("BLE sent OK");
+                                        break;
+                                    }
+                                    Ok(Err(e)) => {
+                                        log::error!("Ble error: {}", e);
+                                        display.clear(Rgb565::WHITE).unwrap();
+                                        display_text!("Device not found", Rgb565::RED);
+                                        Delay::delay_ms(&Delay::default(), 2000);
+                                        break;
+                                    }
+                                    Err(mpsc::TryRecvError::Empty) => {
+                                        loading_bar(&mut display, &entered_code, loop_count, 200, center);
+                                        Delay::delay_ms(&Delay::default(), 50);
+                                        loop_count += 1;
+                                    }
+                                    Err(mpsc::TryRecvError::Disconnected) => break,
+                                }
+                            }
+                        } else {
+                            display.clear(Rgb565::BLACK).unwrap();
+                            display_text!("Invalid code", Rgb565::RED);
+                            Delay::delay_ms(&Delay::default(), 2000);
+                        }
+                        entered_code.clear();
+                        in_keypad_mode = false;
+                    }
+                    break; // Only process the first pressed bit per poll
+                }
+            }
+        }
+
+        // While in keypad mode skip camera capture and QR scanning
+        if in_keypad_mode {
+            FreeRtos::delay_ms(50);
+            if !cfg!(feature = "loop") {
+                break;
+            }
+            continue;
+        }
+
         // Add match for button vs scan loop
         // Add PIR detect match
 
@@ -247,7 +393,6 @@ fn main() {
         drop(frame_buffer);
 
         // let radius = 115;
-        let center = Point::new((FRAME_WIDTH / 2) as i32, (FRAME_HEIGHT / 2) as i32);
         // let progress = ((360.0 / DETECT_INTERVAL_FRAMES as f32) * framecount as f32).deg();
 
         // // Generate arc
@@ -348,7 +493,7 @@ fn main() {
                                 Err(mpsc::TryRecvError::Empty) => {
                                     // No response loop
                                     log::info!("Waiting... {}/200", loop_count);
-                                    
+
                                     loading_bar(&mut display, &text, loop_count, 200, center);
 
                                     Delay::delay_ms(&Delay::default(), 50);
