@@ -205,7 +205,7 @@ fn main() {
         esp_camera_rs::PIXFORMAT_RGB565,   // Greyscale for QR code
         FRAMESIZE,                         // 240x240 frame size
         1,                                // JPEG Quality
-        1,                                 // Frame buffer count
+        2,                                 // Frame buffer count
         esp_camera_rs::CAMERA_GRAB_LATEST, // Grab mode: latest
     )
     .unwrap();
@@ -329,6 +329,9 @@ fn main() {
                             match done_rx.try_recv() {
                                 Ok(Ok(())) => {
                                     // Success message sent
+                                    display.clear(Rgb565::WHITE).unwrap();
+                                    display_text!("Success", Rgb565::GREEN);
+                                    Delay::delay_ms(&Delay::default(), 1000);
                                     log::info!("BLE sent OK");
                                     break;
                                 }
@@ -338,7 +341,7 @@ fn main() {
 
                                     display.clear(Rgb565::WHITE).unwrap();
                                     display_text!("Device not found", Rgb565::RED);
-                                    Delay::delay_ms(&Delay::default(), 5000);
+                                    Delay::delay_ms(&Delay::default(), 2000);
 
                                     break;
                                 }
