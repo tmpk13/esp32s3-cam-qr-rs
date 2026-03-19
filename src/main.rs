@@ -57,6 +57,10 @@ const MCP_ADDR: u8 = 0x20;
 const KEYPAD_CODE_LEN: usize = 7;
 
 use std::sync::mpsc;
+use std::time::{Duration, Instant};
+
+// Screen blanks after this many seconds of no PIR activity
+const PIR_SLEEP_SECS: u64 = 40;
 
 
 fn loading_bar<T: DrawTarget<Color = Rgb565>>(display: &mut T, message: &str, count: u32, max: u32, center: Point)
@@ -172,6 +176,9 @@ fn main() {
             .unwrap();
         };
     }
+
+    // PIR sensor on D0 / GPIO1 — HIGH when motion detected
+    let pir = PinDriver::input(peripherals.pins.gpio1).unwrap();
 
     // Setup led (if you want to change led pin you must change the type in blink_led fn)
     let mut led = PinDriver::output(peripherals.pins.gpio21).unwrap();
@@ -289,8 +296,30 @@ fn main() {
     let mut entered_code = String::new();
     let mut in_keypad_mode = false;
 
+    // PIR / screen-sleep state
+    let mut last_activity = Instant::now();
+
     // If loop feature is enabled attempt to detect every interval
     loop {
+        // --- PIR check: update activity timestamp and handle screen sleep ---
+        if pir.is_high() {
+            last_activity = Instant::now();
+        }
+
+        if last_activity.elapsed() > Duration::from_secs(PIR_SLEEP_SECS) {
+            // Blank the screen and wait until PIR fires again
+            display.clear(Rgb565::BLACK).unwrap();
+            log::info!("Screen sleep: waiting for PIR");
+            loop {
+                FreeRtos::delay_ms(100);
+                if pir.is_high() {
+                    last_activity = Instant::now();
+                    log::info!("PIR triggered: waking screen");
+                    break;
+                }
+            }
+        }
+
         // --- Poll MCP23017 for new button presses ---
         let current_gpio = read_mcp_buttons(&mut i2c);
         let new_presses = prev_gpio & !current_gpio; // Bits that just went high→low (active low)
@@ -301,6 +330,7 @@ fn main() {
             for bit in 0..9u8 {
                 if (new_presses >> bit) & 1 == 1 {
                     in_keypad_mode = true;
+                    last_activity = Instant::now();
                     let digit = bit_to_digit(bit);
                     entered_code.push(digit);
 
@@ -447,6 +477,7 @@ fn main() {
                     };
 
                     // Signal success in the console and via the onboard led
+                    last_activity = Instant::now();
                     blink_led(&mut led, QR_FOUND_LED_DELAY_MS, QR_FOUND_LED_BLINK_COUNT);
                     log::info!("Qrcode found: --> {}", text);
 
