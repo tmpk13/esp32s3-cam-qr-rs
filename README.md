@@ -19,6 +19,8 @@ The design uses a PIR sensor for low power scanning. Dectecting when a user is i
 
 ## Custom printed PCB
 Printed circuit board with JLCPCB  
+
+<img width="200" height="400" alt="image" src="https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260328_052112813.RAW-01.MP.COVER.jpg" />
 <img width="200" height="400" alt="image" src="https://github.com/tmpk13/esp32s3-cam-qr-rs/blob/ble-lock/images/PXL_20260221_220432174.RAW-01.COVER~2.jpg?raw=true" />
 <img width="200" height="400" alt="image" src="https://github.com/user-attachments/assets/a72c7769-4f03-4b61-afc9-129b24a1931a" />
 
